@@ -1,0 +1,213 @@
+﻿@{
+    ViewData["Title"] = "Haber Detayı";
+}
+<input type="hidden" id="hdnNewsId" value="@ViewBag.NewsId" />
+
+<style>
+    /* Yıldız Puanlama Tasarımı */
+    .star-rating i {
+        font-size: 2rem;
+        color: #e4e5e9;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+        .star-rating i:hover, .star-rating i.hover-active, .star-rating i.active {
+            color: #ffc107;
+        }
+
+    .comment-box {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+    }
+</style>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="mb-4">
+                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 mb-3" id="detailCategory">Yükleniyor...</span>
+                <h1 class="fw-bold text-dark mb-3" id="detailTitle">Başlık Yükleniyor...</h1>
+                <div class="d-flex align-items-center text-muted small">
+                    <span class="me-3"><i class="far fa-eye me-1"></i> <span id="detailViewCount">0</span> Görüntülenme</span>
+                </div>
+            </div>
+
+            <div id="newsCarousel" class="carousel slide mb-5 shadow-sm" data-bs-ride="carousel" style="border-radius: 16px; overflow: hidden;">
+                <div class="carousel-inner" id="carouselInner"></div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#newsCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon shadow"></span></button>
+                <button class="carousel-control-next" type="button" data-bs-target="#newsCarousel" data-bs-slide="next"><span class="carousel-control-next-icon shadow"></span></button>
+            </div>
+
+            <div class="news-content mb-5" style="font-size: 1.15rem; line-height: 1.9;" id="detailContent"></div>
+
+            <hr class="border-secondary opacity-25 mb-4" />
+
+            <div class="d-flex align-items-center bg-white p-4 rounded-4 shadow-sm border border-light mb-5">
+                <img src="" id="detailAuthorAvatar" class="rounded-circle me-4 shadow-sm" width="70" height="70" style="object-fit: cover;">
+                <div>
+                    <h6 class="text-muted text-uppercase mb-1" style="font-size: 0.8rem;">Haberin Yazarı</h6>
+                    <h5 class="mb-0 fw-bold text-dark" id="detailAuthorName">Yükleniyor...</h5>
+                </div>
+            </div>
+
+            <div class="text-center mb-5 p-4 bg-white rounded-4 shadow-sm border border-light">
+                <h5 class="fw-bold mb-3">Bu Haberi Nasıl Buldunuz?</h5>
+                <div class="star-rating" id="ratingStars">
+                    <i class="fas fa-star" data-value="1"></i>
+                    <i class="fas fa-star" data-value="2"></i>
+                    <i class="fas fa-star" data-value="3"></i>
+                    <i class="fas fa-star" data-value="4"></i>
+                    <i class="fas fa-star" data-value="5"></i>
+                </div>
+            </div>
+
+            <div class="comment-box shadow-sm mb-5 border border-light bg-white">
+                <h5 class="fw-bold mb-3"><i class="far fa-comment-dots text-primary me-2"></i>Yorum Yap</h5>
+                <textarea id="txtComment" class="form-control mb-3" rows="3" placeholder="Düşüncelerinizi paylaşın..."></textarea>
+                <div class="text-end">
+                    <button id="btnSubmitComment" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Gönder</button>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mb-4">Yorumlar</h5>
+            <div id="commentsList">
+                <div class="text-center text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Yorumlar yükleniyor...</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            let newsId = parseInt($("#hdnNewsId").val());
+            const token = localStorage.getItem("token");
+
+            // 1. HABER DETAYLARINI YÜKLE
+            $.ajax({
+                url: "https://localhost:7112/api/News/" + newsId,
+                type: "GET",
+                success: function (res) {
+                    let news = res.data ? res.data : (res.$values ? res.$values : res);
+                    $("#detailTitle").text(news.title);
+                    $("#detailCategory").text(news.categoryName || "Genel");
+                   if (news.content) $("#detailContent").html(news.content);
+                    $("#detailViewCount").text(news.viewCount || 0);
+
+                    let authorName = news.appUserName || "KetchNews Editörü";
+                    $("#detailAuthorName").text(authorName);
+                    $("#detailAuthorAvatar").attr("src", `https://ui-avatars.com/api/?name=${authorName}&background=2a5298&color=fff&rounded=true&bold=true`);
+
+                    let imgArray = [news.imagePath, news.imagePath2, news.imagePath3, news.imagePath4, news.imagePath5].filter(Boolean);
+                    if(imgArray.length === 0) imgArray.push("https://ui-avatars.com/api/?name=Haber+Görseli&background=2a5298&color=fff&size=500");
+
+                    let carouselHtml = "";
+                    $.each(imgArray, function(index, url) {
+                        let activeClass = index === 0 ? "active" : "";
+                        carouselHtml += `<div class="carousel-item ${activeClass}"><img src="${url}" class="d-block w-100" style="max-height: 450px; object-fit: cover; border-radius: 12px;"></div>`;
+                    });
+                    $("#carouselInner").html(carouselHtml);
+                }
+            });
+
+            // 2. YORUMLARI YÜKLE
+            function LoadComments() {
+                $.ajax({
+                    url: "https://localhost:7112/api/Comment/News/" + newsId,
+                    type: "GET",
+                    success: function (res) {
+                        let comments = res.data ? res.data : (res.$values ? res.$values : res);
+                        let html = "";
+
+                        if(comments.length === 0) {
+                            $("#commentsList").html("<p class='text-muted'>Henüz yorum yapılmamış. İlk yorumu siz yapın!</p>");
+                            return;
+                        }
+
+                        $.each(comments, function(i, comment) {
+                            let avatar = `https://ui-avatars.com/api/?name=${comment.userName}&background=random&color=fff&rounded=true`;
+                            html += `
+                            <div class="d-flex mb-4 p-3 bg-white rounded-4 shadow-sm border border-light">
+                                <img src="${avatar}" class="rounded-circle me-3" width="50" height="50">
+                                <div>
+                                    <h6 class="fw-bold mb-1">${comment.userName}</h6>
+                                    <p class="mb-0 text-secondary">${comment.text}</p>
+                                </div>
+                            </div>`;
+                        });
+                        $("#commentsList").html(html);
+                    }
+                });
+            }
+            LoadComments(); // Sayfa açılırken yorumları çek
+
+            // 3. YORUM GÖNDER
+            $("#btnSubmitComment").click(function () {
+                if (!token) {
+                    Swal.fire("Uyarı", "Yorum yapabilmek için giriş yapmalısınız.", "warning"); return;
+                }
+
+                let textVal = $("#txtComment").val().trim();
+                if(!textVal) {
+                    Swal.fire("Uyarı", "Lütfen boş yorum göndermeyin.", "warning"); return;
+                }
+
+                $.ajax({
+                    url: "https://localhost:7112/api/Comment",
+                    type: "POST",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify({ NewsId: newsId, Text: textVal }),
+                    success: function () {
+                        Swal.fire("Başarılı", "Yorumunuz eklendi.", "success");
+                        $("#txtComment").val(""); // Kutuyu temizle
+                        LoadComments(); // Yorumları yenile
+                    },
+                    error: function () {
+                        Swal.fire("Hata", "Yorum gönderilirken bir sorun oluştu.", "error");
+                    }
+                });
+            });
+
+            // 4. YILDIZ PUANLAMA (RATING) SİSTEMİ
+            const stars = document.querySelectorAll(".star-rating i");
+
+            // Üzerine gelince sarı yap
+            stars.forEach((star, index) => {
+                star.addEventListener("mouseover", () => {
+                    stars.forEach((s, i) => { if(i <= index) s.classList.add("hover-active"); else s.classList.remove("hover-active"); });
+                });
+                // Fare çekilince hover'ı temizle
+                star.addEventListener("mouseout", () => {
+                    stars.forEach(s => s.classList.remove("hover-active"));
+                });
+
+                // Tıklanınca puanı kaydet
+                star.addEventListener("click", () => {
+                    if (!token) { Swal.fire("Uyarı", "Puan vermek için giriş yapmalısınız.", "warning"); return; }
+
+                    let scoreVal = parseInt(star.getAttribute("data-value"));
+
+                    $.ajax({
+                        url: "https://localhost:7112/api/Rating",
+                        type: "POST",
+                        contentType: "application/json",
+                        headers: { "Authorization": "Bearer " + token },
+                        data: JSON.stringify({ NewsId: newsId, Score: scoreVal }),
+                        success: function () {
+                            Swal.fire("Teşekkürler", "Puanınız başarıyla kaydedildi.", "success");
+                            // Tıklanan yıldıza kadar olanları kalıcı sarı yap
+                            stars.forEach((s, i) => {
+                                if(i < scoreVal) s.classList.add("active"); else s.classList.remove("active");
+                            });
+                        }
+                    });
+                });
+            });
+
+        });
+    </script>
+}

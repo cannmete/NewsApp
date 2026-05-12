@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - KetchNews</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/NewsApp.UI.styles.css" asp-append-version="true" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <style>
+        /* Tasarımı toparlayacak ufak dokunuşlar */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        main {
+            flex: 1;
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: #2a5298 !important;
+            letter-spacing: -0.5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm sticky-top py-3">
+            <div class="container">
+                <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-newspaper text-warning me-2"></i> KetchNews
+                </a>
+
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Menüyü Aç">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarMain">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-semibold">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link text-dark dropdown-toggle" href="#" id="navbarCategory" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Kategoriler
+                            </a>
+                            <ul class="dropdown-menu border-0 shadow-sm mt-2" id="navCategoryList" aria-labelledby="navbarCategory">
+                                <li><span class="dropdown-item text-muted">Yükleniyor...</span></li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <div class="d-flex" id="authSection">
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main role="main" class="pb-5">
+        @RenderBody()
+    </main>
+
+    <footer class="bg-dark text-white py-4 mt-auto">
+        <div class="container text-center">
+            <h5 class="fw-bold mb-3"><i class="fas fa-newspaper text-warning me-2"></i>KetchNews</h5>
+            <p class="text-secondary small mb-3">Gündemi, teknolojiyi ve ekonomiyi anında takip edin. Tüm hakları saklıdır.</p>
+            <div class="mb-3">
+                <a href="#" class="text-light me-3 fs-5"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="text-light me-3 fs-5"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="text-light fs-5"><i class="fab fa-linkedin"></i></a>
+            </div>
+            <div class="border-top border-secondary pt-3 mt-3">
+                <small class="text-muted">&copy; 2026 - KetchNews Haber Portalı</small>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            console.log("Layout Scripti Başladı..."); // Kodun çalışıp çalışmadığını izliyoruz
+
+            // 1. KULLANICI GİRİŞ (AUTH) İŞLEMLERİ
+            function parseJwt(t) { try { return JSON.parse(atob(t.split('.')[1])); } catch (e) { return null; } }
+            const token = localStorage.getItem("token");
+
+            if (token) {
+                const decodedToken = parseJwt(token);
+                const username = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "Kullanıcı";
+                let role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
+                if (Array.isArray(role)) role = role[0];
+
+                const avatarUrl = `https://ui-avatars.com/api/?name=${username}&background=2a5298&color=fff&rounded=true&bold=true`;
+                let adminPanelLink = "";
+                if (role === "Admin" || role === "Writer") {
+                    adminPanelLink = `
+                        <li><a class="dropdown-item py-2" href="/Home/WriteNews"><i class="fas fa-pen-nib text-success me-2"></i>Haber Yaz</a></li>
+                        <li><a class="dropdown-item py-2" href="/Admin/Index"><i class="fas fa-tachometer-alt text-warning me-2"></i>Yönetim Paneli</a></li>`;
+                }
+
+                let profileHtml = `
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
+                            <img src="${avatarUrl}" class="rounded-circle shadow-sm me-2" width="40" height="40">
+                            <span class="fw-bold text-dark me-1">${username}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                            <li><a class="dropdown-item py-2 fw-bold text-primary" href="/Home/Profile"><i class="fas fa-user-circle me-2"></i>Profilim</a></li>
+                            ${adminPanelLink}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="publicLogout(event)"><i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap</a></li>
+                        </ul>
+                    </div>`;
+                $("#authSection").html(profileHtml);
+            } else {
+                $("#authSection").html(`
+                    <a href="/Auth/Login" class="btn btn-outline-primary me-2 fw-bold px-3 rounded-pill">Giriş Yap</a>
+                    <a href="/Auth/Register" class="btn btn-primary fw-bold px-3 rounded-pill shadow-sm">Kayıt Ol</a>
+                `);
+            }
+
+            // 2. KATEGORİLERİ DROPDOWN'A ÇEKME
+            console.log("API'den Kategoriler İsteniyor...");
+            $.ajax({
+                url: "https://localhost:7112/api/Category",
+                type: "GET",
+                success: function (res) {
+                    console.log("Kategoriler API'den Geldi:", res); // Gelen veriyi konsola basıyoruz
+
+                    let catList = res.data ? res.data : (res.$values ? res.$values : res);
+                    let html = `<li><a class="dropdown-item fw-bold text-primary" href="/Home/Index">Tüm Haberler</a></li><li><hr class="dropdown-divider"></li>`;
+
+                    if (catList && catList.length > 0) {
+                        $.each(catList, function (i, c) {
+                            let id = c.id || c.Id;
+                            let name = c.name || c.Name;
+                            if (id && name) {
+                                html += `<li><a class="dropdown-item" href="/Home/Index?categoryId=${id}">${name}</a></li>`;
+                            }
+                        });
+                    } else {
+                        html += `<li><span class="dropdown-item text-muted small">Henüz kategori yok</span></li>`;
+                    }
+
+                    $("#navCategoryList").html(html);
+                    console.log("Dropdown güncellendi!");
+                },
+                error: function (err) {
+                    console.error("Kategoriler çekilirken hata:", err);
+                    $("#navCategoryList").html(`<li><span class="dropdown-item text-danger small">API Bağlantı Hatası</span></li>`);
+                }
+            });
+        });
+
+        // 3. ÇIKIŞ YAPMA FONKSİYONU
+        window.publicLogout = function(e) {
+            e.preventDefault();
+            Swal.fire({ title: 'Çıkış', text: 'Oturum kapatılsın mı?', icon: 'question', showCancelButton: true, confirmButtonText: 'Evet' }).then((result) => {
+                if (result.isConfirmed) { localStorage.removeItem("token"); window.location.reload(); }
+            });
+        }
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

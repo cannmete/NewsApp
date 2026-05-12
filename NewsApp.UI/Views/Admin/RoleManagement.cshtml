@@ -1,0 +1,207 @@
+﻿@{
+    ViewData["Title"] = "Rol ve Kullanıcı Yönetimi";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card p-4 shadow-sm border-0">
+            <h5><i class="fas fa-plus-circle text-success me-2"></i> Yeni Rol Ekle</h5>
+            <hr />
+            <div class="mb-3">
+                <label class="form-label">Rol Adı</label>
+                <input type="text" id="txtRoleName" class="form-control" placeholder="Örn: Editor">
+            </div>
+            <button id="btnSaveRole" class="btn btn-primary w-100">
+                <i class="fas fa-save me-1"></i> Kaydet
+            </button>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card p-4 shadow-sm border-0">
+            <h5><i class="fas fa-users-cog text-primary me-2"></i> Kullanıcı Yetkilendirme</h5>
+            <hr />
+            <table class="table table-hover table-bordered mt-2">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Kullanıcı Adı</th>
+                        <th>E-Posta</th>
+                        <th>Mevcut Rolü</th>
+                        <th class="text-center" style="width: 150px;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignRoleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Kullanıcıya Rol Ata</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="hdnUserId" />
+                <p class="mb-3">Seçilen Kullanıcı: <strong id="lblUserName" class="text-primary"></strong></p>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Sistem Rolleri</label>
+                    <select id="ddlRoles" class="form-select">
+                        <option value="">Bir Rol Seçin...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-success" id="btnAssignRole">
+                    <i class="fas fa-check me-1"></i> Rolü Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            const apiRoleUrl = "https://localhost:7112/api/Role/";
+            const apiUserUrl = "https://localhost:7112/api/User/";
+            const token = localStorage.getItem("token");
+
+            let assignRoleModal = new bootstrap.Modal(document.getElementById('assignRoleModal'));
+
+            // Sayfa açıldığında fonksiyonları tetikle
+            LoadUsers();
+            LoadRolesToDropdown();
+
+            // 1. KULLANICILARI LİSTELEME (GET)
+            function LoadUsers() {
+                $.ajax({
+                    url: apiUserUrl, // API'de tüm kullanıcıları getiren endpoint olmalı
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (response) {
+                        let html = "";
+                        $.each(response, function (index, user) {
+                            let userId = user.id || user.Id;
+                            let userName = user.userName || user.UserName;
+                            let email = user.email || user.Email;
+
+                            // Eğer RoleName dolu geliyorsa yeşil badge, boşsa gri badge bas
+                            let roleDisplayName = (user.roleName || user.RoleName)
+                                ? `<span class="badge bg-success">${user.roleName || user.RoleName}</span>`
+                                : `<span class="badge bg-secondary">Atanmadı</span>`;
+
+                            html += `<tr>
+                                        <td><strong>${userName}</strong></td>
+                                        <td>${email}</td>
+                                        <td>${roleDisplayName}</td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-info btn-assign"
+                                                    data-id="${userId}"
+                                                    data-username="${userName}">
+                                                <i class="fas fa-user-edit"></i> Rol Düzenle
+                                            </button>
+                                        </td>
+                                     </tr>`;
+                        });
+                        $("#userTableBody").html(html);
+                    },
+                    error: function (err) {
+                        console.log("Kullanıcılar getirilemedi:", err);
+                    }
+                });
+            }
+
+            // 2. ROLLERİ SELECT (AÇILIR LİSTE) İÇİNE DOLDURMA (GET)
+            function LoadRolesToDropdown() {
+                $.ajax({
+                    url: apiRoleUrl,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (response) {
+                        let options = '<option value="">Bir Rol Seçin...</option>';
+                        $.each(response, function (index, role) {
+                            let roleName = role.name || role.Name;
+                            options += `<option value="${roleName}">${roleName}</option>`;
+                        });
+                        $("#ddlRoles").html(options);
+                    }
+                });
+            }
+
+            // 3. YENİ ROL EKLEME (POST) - Sol taraftaki form için
+            $("#btnSaveRole").click(function () {
+                let roleName = $("#txtRoleName").val();
+
+                if (roleName === "") {
+                    Swal.fire("Uyarı!", "Rol adı boş bırakılamaz.", "warning");
+                    return;
+                }
+
+                $.ajax({
+                    url: apiRoleUrl,
+                    type: "POST",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify({ name: roleName }),
+                    success: function () {
+                        Swal.fire("Başarılı!", "Rol sisteme eklendi.", "success");
+                        $("#txtRoleName").val("");
+                        LoadRolesToDropdown(); // Rol eklendiğinde dropdown'ı güncelle
+                    },
+                    error: function () {
+                        Swal.fire("Hata!", "Rol eklenemedi.", "error");
+                    }
+                });
+            });
+
+            // 4. MODALI AÇMA VE VERİLERİ DOLDURMA
+            $("#userTableBody").on("click", ".btn-assign", function () {
+                let userId = $(this).attr("data-id");
+                let userName = $(this).attr("data-username");
+
+                $("#hdnUserId").val(userId);
+                $("#lblUserName").text(userName);
+                $("#ddlRoles").val(""); // Dropdown'ı sıfırla
+
+                assignRoleModal.show();
+            });
+
+            // 5. KULLANICIYA ROLÜ ATAMA (POST/PUT)
+            $("#btnAssignRole").click(function () {
+                let userId = $("#hdnUserId").val();
+                let selectedRole = $("#ddlRoles").val();
+
+                if (selectedRole === "") {
+                    Swal.fire("Uyarı", "Lütfen atamak için bir rol seçin.", "warning");
+                    return;
+                }
+
+                $.ajax({
+                    url: apiUserUrl + "AssignRole", // API'deki Rol Atama endpoint'i (Örn: /api/User/AssignRole)
+                    type: "POST", // API tasarımına göre PUT da olabilir
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify({ userId: userId, roleName: selectedRole }),
+                    success: function () {
+                        assignRoleModal.hide();
+                        Swal.fire("Başarılı", "Kullanıcının rolü başarıyla güncellendi.", "success");
+                        LoadUsers(); // Tabloyu yenile
+                    },
+                    error: function (err) {
+                        console.log("Rol atama hatası:", err);
+                        Swal.fire("Hata", "Rol atama işlemi başarısız oldu.", "error");
+                    }
+                });
+            });
+
+        });
+    </script>
+}

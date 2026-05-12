@@ -1,0 +1,159 @@
+﻿@{
+    ViewData["Title"] = "Yönetim Paneli";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<header class="page-header">
+    <h2>Yönetim Paneli Özet</h2>
+</header>
+
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-modern border-0 shadow-sm bg-primary text-white">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="h4 fw-bold mb-0" id="countNews"><i class="fas fa-spinner fa-spin"></i></div>
+                        <div class="small">Toplam Haber</div>
+                    </div>
+                    <i class="fas fa-newspaper fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-modern border-0 shadow-sm bg-success text-white">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="h4 fw-bold mb-0" id="countUsers"><i class="fas fa-spinner fa-spin"></i></div>
+                        <div class="small">Aktif Kullanıcı</div>
+                    </div>
+                    <i class="fas fa-users fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-modern border-0 shadow-sm bg-warning text-white">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="h4 fw-bold mb-0" id="countCategories"><i class="fas fa-spinner fa-spin"></i></div>
+                        <div class="small">Kategoriler</div>
+                    </div>
+                    <i class="fas fa-tags fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card card-modern border-0 shadow-sm bg-danger text-white">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="h4 fw-bold mb-0" id="countPendingComments"><i class="fas fa-spinner fa-spin"></i></div>
+                        <div class="small">Bekleyen Yorum</div>
+                    </div>
+                    <i class="fas fa-comments fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-2">
+    <div class="col-lg-12">
+        <div class="card card-modern">
+            <div class="card-header">
+                <h5 class="card-title fw-bold text-dark"><i class="fas fa-rocket me-2 text-primary"></i>Hızlı İşlemler</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center g-3">
+                    <div class="col-6 col-md-3">
+                        <a href="/Admin/News" class="btn btn-outline-dark p-4 w-100 border-dashed border-2">
+                            <i class="fas fa-plus-circle fa-2x mb-2 text-primary"></i><br>
+                            Haber Ekle/Düzenle
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <a href="/Admin/Categories" class="btn btn-outline-dark p-4 w-100 border-dashed border-2">
+                            <i class="fas fa-folder-open fa-2x mb-2 text-success"></i><br>
+                            Kategori Yönetimi
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <a href="/Admin/RoleManagement" class="btn btn-outline-dark p-4 w-100 border-dashed border-2">
+                            <i class="fas fa-user-shield fa-2x mb-2 text-info"></i><br>
+                            Rol Yönetimi
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <a href="/Admin/Comments" class="btn btn-outline-dark p-4 w-100 border-dashed border-2">
+                            <i class="fas fa-comment-dots fa-2x mb-2 text-danger"></i><br>
+                            Yorum Moderasyonu
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // İstatistikleri API'den Çekme Fonksiyonu
+            function loadDashboardStats() {
+                const token = localStorage.getItem("token");
+                const apiBaseUrl = "https://localhost:7112/api"; // Kendi portunla kontrol et
+
+                // Toplam Haber Sayısını Çek
+                $.ajax({
+                    url: apiBaseUrl + "/News/Count",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) { $("#countNews").text(res); },
+                    error: function () { $("#countNews").text("0"); }
+                });
+
+                // Toplam Kullanıcı Sayısını Çek
+                $.ajax({
+                    url: apiBaseUrl + "/User/Count",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) { $("#countUsers").text(res); },
+                    error: function () { $("#countUsers").text("0"); }
+                });
+
+                // Kategori Sayısını Çek
+                $.ajax({
+                    url: apiBaseUrl + "/Category/Count",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) { $("#countCategories").text(res); },
+                    error: function () { $("#countCategories").text("0"); }
+                });
+
+                // Bekleyen Yorum Sayısını Çek (Listeyi çekip uzunluğunu alıyoruz)
+                $.ajax({
+                    url: apiBaseUrl + "/Comment/Pending",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) {
+                        let pendingList = res.data ? res.data : (res.$values ? res.$values : res);
+                        let count = pendingList ? pendingList.length : 0;
+                        $("#countPendingComments").text(count);
+                    },
+                    error: function () { $("#countPendingComments").text("0"); }
+                });
+            }
+
+            // Sayfa yüklendiğinde verileri getir
+            loadDashboardStats();
+        });
+    </script>
+}

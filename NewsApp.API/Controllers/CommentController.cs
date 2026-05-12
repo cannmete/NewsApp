@@ -1,12 +1,7 @@
-﻿using AutoMapper;
-using NewsApp.API.DTOs;
-using NewsApp.API.Models;
-using NewsApp.API.Repositories;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NewsApp.API.DTOs;
+using Microsoft.EntityFrameworkCore;
 using NewsApp.API.Models;
-using NewsApp.API.Repositories;
 using System.Security.Claims;
 
 namespace NewsApp.API.Controllers
@@ -15,64 +10,134 @@ namespace NewsApp.API.Controllers
     [ApiController]
     public class CommentController : ControllerBase
     {
-        private readonly GenericRepository<Comment> _repository;
-        private readonly IMapper _mapper;
+        private readonly AppDbContext _context;
+        public CommentController(AppDbContext context) { _context = context; }
 
-        public CommentController(GenericRepository<Comment> repository, IMapper mapper)
+        // 1. Habere Ait Onaylı Yorumları Getir
+        [HttpGet("News/{newsId}")]
+        public async Task<IActionResult> GetNewsComments(int newsId)
         {
-            _repository = repository;
-            _mapper = mapper;
+            var comments = await _context.Comments
+                .Include(c => c.AppUser)
+                .Where(c => c.NewsId == newsId && c.IsApproved)
+                .OrderByDescending(c => c.Id)
+                .Select(c => new {
+                    c.Id,
+                    c.Text,
+                    UserName = c.AppUser != null ? c.AppUser.UserName : "Anonim"
+                }).ToListAsync();
+
+            return Ok(comments);
         }
 
-        // Sadece belirli bir habere ait yorumları getirme
-        [HttpGet("ByNews/{newsId}")]
-        public async Task<IActionResult> GetByNewsId(int newsId)
-        {
-            // İleride buraya "habere göre filtreleme" mantığı eklenecek, şimdilik tümünü çeken basit yapı
-            var comments = await _repository.GetAllAsync();
-            var newsComments = comments.Where(c => c.NewsId == newsId).ToList();
-
-            // CommentDto'nuz olduğunu varsayarak (Yoksa DTO'yu eklememiz gerekir)
-            // var dtos = _mapper.Map<List<CommentDto>>(newsComments);
-            return Ok(newsComments);
-        }
-
+        // 2. Yeni Yorum Ekle (Sadece Giriş Yapanlar)
         [HttpPost]
-        [Authorize] // Sadece giriş yapmış (Token'ı olan) kullanıcılar yorum yapabilir
-        public async Task<IActionResult> Post(CommentDto dto)
+        [Authorize]
+        public async Task<IActionResult> AddComment([FromBody] CommentRequest request)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var comment = _mapper.Map<Comment>(dto);
 
-            comment.AppUserId = userId; // Yorumu yapan kişiyi kaydediyoruz
-            comment.CreatedDate = DateTime.Now;
+            var comment = new Comment
+            {
+                NewsId = request.NewsId,
+                Text = request.Text,
+                AppUserId = userId,
+                IsApproved = false 
+            };
 
-            await _repository.AddAsync(comment);
-            return Ok(new ResultDto { Status = true, Message = "Yorum başarıyla eklendi." });
+            await _context.Comments.AddAsync(comment);
+            await _context.SaveChangesAsync();
+            return Ok(new { Status = true, Message = "Yorumunuz başarıyla eklendi." });
         }
 
-        [HttpDelete("{id}")]
-        [Authorize] // Sisteme giriş yapmış herkes erişebilir (Rol kısıtlaması yok)
-        public async Task<IActionResult> Delete(int id)
+        // GET: api/Comment/MyComments
+        [HttpGet("MyComments")]
+        [Authorize] // Sadece giriş yapmış olmak yeterli
+        public async Task<IActionResult> GetMyComments()
         {
-            var comment = await _repository.GetByIdAsync(id);
-            if (comment == null)
-                return NotFound(new ResultDto { Status = false, Message = "Yorum bulunamadı." });
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // İsteği yapan kullanıcının kimliğini (ID) alıyoruz
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var comments = await _context.Comments
+                .Include(c => c.News)
+                .Where(c => c.AppUserId == userId)
+                .OrderByDescending(c => c.Id)
+                .Select(c => new {
+                    c.Id,
+                    c.Text,
+                    c.IsApproved,
+                    NewsId = c.NewsId,
+                    NewsTitle = c.News != null ? c.News.Title : "Silinmiş Haber"
+                })
+                .ToListAsync();
 
-            // Kullanıcının yönetici (Admin) olup olmadığını sorguluyoruz
-            bool isAdmin = User.IsInRole("Admin");
+            return Ok(comments);
+        }
 
-            // Eğer kullanıcı yönetici değilse VE yorumu kendisi yazmadıysa işlemi engelliyoruz
-            if (!isAdmin && comment.AppUserId != currentUserId)
+        // GET: api/Comment/Pending (Onay Bekleyenleri Getir)
+        [HttpGet("Pending")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPendingComments()
+        {
+            var comments = await _context.Comments
+                .Include(c => c.News)
+                .Include(c => c.AppUser)
+                .Where(c => !c.IsApproved) // Sadece false olanlar
+                .OrderByDescending(c => c.Id)
+                .Select(c => new {
+                    c.Id,
+                    c.Text,
+                    NewsTitle = c.News != null ? c.News.Title : "Silinmiş Haber",
+                    UserName = c.AppUser != null ? c.AppUser.UserName : "Anonim"
+                }).ToListAsync();
+
+            return Ok(comments);
+        }
+
+        // PUT: api/Comment/Approve/5 (Yorumu Onayla)
+        [HttpPut("Approve/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ApproveComment(int id)
+        {
+            var comment = await _context.Comments.FindAsync(id);
+            if (comment == null) return NotFound(new { Message = "Yorum bulunamadı." });
+
+            comment.IsApproved = true; // Onayı verdik!
+
+            // 1. LOG KAYDI: Onaylama işlemi
+            _context.SystemLogs.Add(new SystemLog
             {
-                return StatusCode(StatusCodes.Status403Forbidden, new ResultDto { Status = false, Message = "Bu yorumu silme yetkiniz bulunmuyor." });
-            }
+                Action = "Yorum Onaylandı",
+                Details = "Bekleyen bir yorum admin tarafından yayına alındı."
+            });
 
-            await _repository.DeleteAsync(comment);
-            return Ok(new ResultDto { Status = true, Message = "Yorum başarıyla silindi." });
+            // Tek SaveChangesAsync ile hem yorumu onaylıyoruz hem de logu kaydediyoruz
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = true, Message = "Yorum başarıyla yayına alındı." });
+        }
+
+        // DELETE: api/Comment/5 (Trol/Spam Yorumu Sil)
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteComment(int id)
+        {
+            var comment = await _context.Comments.FindAsync(id);
+            if (comment == null) return NotFound();
+
+            _context.Comments.Remove(comment);
+
+            // 2. LOG KAYDI: Silme işlemi
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Action = "Yorum Reddedildi",
+                Details = "Uygunsuz görülen bir yorum sistemden silindi."
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { Status = true, Message = "Yorum kalıcı olarak silindi." });
         }
     }
+
+    // Minik Veri Taşıyıcı
+    public class CommentRequest { public int NewsId { get; set; } public string Text { get; set; } }
 }

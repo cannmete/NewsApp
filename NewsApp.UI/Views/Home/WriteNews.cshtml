@@ -1,0 +1,158 @@
+﻿@{
+    ViewData["Title"] = "Yeni Haber Yaz";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script>
+    const userToken = localStorage.getItem("token");
+    if (!userToken) { window.location.href = "/Auth/Login"; }
+    else {
+        function parseJwt(t) { try { return JSON.parse(atob(t.split('.')[1])); } catch (e) { return null; } }
+        let role = parseJwt(userToken)["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
+        if (Array.isArray(role)) role = role[0];
+        if (role === "User") {
+            alert("Haber yazma yetkiniz yok.");
+            window.location.href = "/Home/Index";
+        }
+    }
+</script>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white p-4">
+                    <h3 class="mb-0"><i class="fas fa-pen-fancy me-2"></i>Yeni Haber Oluştur</h3>
+                    <p class="mb-0 text-white-50 mt-1">Okuyucularınızla en güncel ve detaylı gelişmeleri paylaşın.</p>
+                </div>
+
+                <div class="card-body p-5">
+                    <div class="row">
+                        <div class="col-md-8 mb-4">
+                            <label class="form-label fw-bold text-secondary">Haber Başlığı</label>
+                            <input type="text" id="txtTitle" class="form-control form-control-lg bg-light border-0" placeholder="Çarpıcı bir başlık girin...">
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <label class="form-label fw-bold text-secondary">Kategori</label>
+                            <select id="ddlCategory" class="form-select form-select-lg bg-light border-0">
+                                <option value="">Seçiniz...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary">Haber İçeriği</label>
+                        <textarea id="txtContent" class="form-control bg-light border-0" rows="12" placeholder="Haberin detaylarını buraya dökün... Enter tuşu ile paragraflar oluşturabilirsiniz."></textarea>
+                    </div>
+
+                    <h5 class="fw-bold mt-5 mb-3 border-bottom pb-2"><i class="fas fa-images text-primary me-2"></i>Haber İçin Görseller</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label small text-muted">Kapak Fotoğrafı (Zorunlu)</label>
+                            <input type="file" id="fileImg1" class="form-control" accept="image/*">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Ek Görsel 2</label>
+                            <input type="file" id="fileImg2" class="form-control" accept="image/*">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Ek Görsel 3</label>
+                            <input type="file" id="fileImg3" class="form-control" accept="image/*">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Ek Görsel 4</label>
+                            <input type="file" id="fileImg4" class="form-control" accept="image/*">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted">Ek Görsel 5</label>
+                            <input type="file" id="fileImg5" class="form-control" accept="image/*">
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-5">
+                        <button id="btnPublish" class="btn btn-success btn-lg px-5 shadow rounded-pill">
+                            <i class="fas fa-paper-plane me-2"></i>Haberi Yayımla
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+
+    <style>
+        /* Editörün yüksekliğini ayarlıyoruz ki ferah ferah yazılsın */
+        .ck-editor__editable_inline {
+            min-height: 300px;
+            font-size: 1.1rem;
+        }
+    </style>
+
+    <script>
+        $(document).ready(function () {
+            const token = localStorage.getItem("token");
+            let myEditor; // Editör nesnesini burada tutacağız
+
+            // 1. Textarea'yı Zengin Editöre Dönüştür
+            ClassicEditor
+                .create(document.querySelector('#txtContent'), {
+                    toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', '|', 'undo', 'redo' ]
+                })
+                .then(editor => {
+                    myEditor = editor;
+                    console.log("Editör başarıyla yüklendi.");
+                })
+                .catch(error => { console.error("Editör yüklenirken hata:", error); });
+
+            // Kategori Çekme İşlemi
+            $.ajax({
+                url: "https://localhost:7112/api/Category", type: "GET", headers: { "Authorization": "Bearer " + token },
+                success: function (res) {
+                    let catList = res.data ? res.data : (res.$values ? res.$values : res);
+                    let opts = '<option value="">Kategori Seçiniz...</option>';
+                    $.each(catList, function (i, c) { opts += `<option value="${c.id || c.Id}">${c.name || c.Name}</option>`; });
+                    $("#ddlCategory").html(opts);
+                }
+            });
+
+            // Haberi Yayımla İşlemi
+            $("#btnPublish").click(async function () {
+                let title = $("#txtTitle").val();
+                let catId = parseInt($("#ddlCategory").val());
+
+                // İÇERİĞİ ARTIK TEXTAREA'DAN DEĞİL, EDİTÖRDEN ALIYORUZ!
+                let content = myEditor.getData();
+
+                if (!title || !content || isNaN(catId) || !document.getElementById("fileImg1").files[0]) {
+                    Swal.fire("Uyarı", "Başlık, Kategori, İçerik ve Kapak Fotoğrafı zorunludur.", "warning"); return;
+                }
+
+                let btn = $(this); btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Yükleniyor...');
+
+                async function uploadFile(id) {
+                    let f = document.getElementById(id).files[0]; if (!f) return null;
+                    let fd = new FormData(); fd.append("file", f);
+                    try {
+                        let r = await $.ajax({ url: "https://localhost:7112/api/News/Upload", type: "POST", headers: { "Authorization": "Bearer " + token }, data: fd, processData: false, contentType: false });
+                        return r.url;
+                    } catch (e) { return null; }
+                }
+
+                let p = {
+                    title: title, content: content, categoryId: catId,
+                    imagePath: await uploadFile("fileImg1"), imagePath2: await uploadFile("fileImg2"),
+                    imagePath3: await uploadFile("fileImg3"), imagePath4: await uploadFile("fileImg4"), imagePath5: await uploadFile("fileImg5")
+                };
+
+                $.ajax({
+                    url: "https://localhost:7112/api/News", type: "POST", contentType: "application/json", headers: { "Authorization": "Bearer " + token }, data: JSON.stringify(p),
+                    success: function () { Swal.fire("Başarılı!", "Yayımlandı.", "success").then(() => window.location.href = "/Home/Index"); },
+                    error: function () { btn.prop("disabled", false).html('Haberi Yayımla'); Swal.fire("Hata", "Oluşturulamadı.", "error"); }
+                });
+            });
+        });
+    </script>
+}

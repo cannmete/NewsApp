@@ -1,9 +1,10 @@
-﻿using NewsApp.API.DTOs;
-using NewsApp.API.Models;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NewsApp.API.DTOs;
+using NewsApp.API.DTOs;
+using NewsApp.API.Models;
 using NewsApp.API.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -99,6 +100,13 @@ namespace NewsApp.API.Controllers
             );
 
             return token;
+        }
+
+        [HttpGet("Count")]
+        public async Task<IActionResult> GetCount()
+        {
+            var count = await _userManager.Users.CountAsync();
+            return Ok(count);
         }
     }
 }

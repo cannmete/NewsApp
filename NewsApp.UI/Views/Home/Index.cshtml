@@ -1,0 +1,137 @@
+﻿@{
+    ViewData["Title"] = "Ana Sayfa";
+}
+<style>
+    .news-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 12px;
+    }
+
+        .news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+
+    .search-hero {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border-radius: 0 0 30px 30px;
+    }
+</style>
+
+<div class="search-hero text-white text-center py-5 mb-5 shadow-sm">
+    <div class="container mt-3 mb-3">
+        <h2 class="fw-bold mb-3"><i class="fas fa-bolt text-warning me-2"></i>En Güncel Haberler</h2>
+        <div class="row justify-content-center g-2">
+            <div class="col-md-5">
+                <input type="text" id="txtSearch" class="form-control form-control-lg border-0 rounded-pill shadow-sm ps-4" placeholder="Haberlerde ara...">
+            </div>
+            <div class="col-md-3">
+                <select id="ddlSort" class="form-select form-select-lg border-0 rounded-pill shadow-sm">
+                    <option value="">En Yeniler</option>
+                    <option value="views">En Çok Okunanlar</option>
+                    <option value="comments">En Çok Yorumlananlar</option>
+                    <option value="rating">En Yüksek Puanlılar</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button id="btnSearch" class="btn btn-light btn-lg border-0 rounded-pill shadow-sm fw-bold text-primary w-100">Filtrele</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row g-4" id="publicNewsGrid">
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            // Sayfa açıldığında haberleri yükle
+            LoadNews();
+
+            // Filtrele butonuna basıldığında yeniden yükle
+            $("#btnSearch").click(function() {
+                LoadNews();
+            });
+
+            // Enter tuşuna basıldığında da arama yapsın
+            $("#txtSearch").keypress(function(e) {
+                if(e.which == 13) { LoadNews(); }
+            });
+
+            // Sıralama değiştiği anda otomatik yükle (Butona basmaya gerek kalmadan)
+            $("#ddlSort").change(function() {
+                LoadNews();
+            });
+
+            function LoadNews() {
+                let searchVal = $("#txtSearch").val().trim();
+                let sortVal = $("#ddlSort").val();
+
+                // Adres çubuğundaki (Örn: ?categoryId=3) değerini yakala
+                let urlParams = new URLSearchParams(window.location.search);
+                let catId = urlParams.get('categoryId');
+
+                $.ajax({
+                    url: "https://localhost:7112/api/News",
+                    type: "GET",
+                    // categoryId'yi de API'ye gönderiyoruz!
+                    data: { search: searchVal, sortBy: sortVal, categoryId: catId },
+                    success: function (res) {
+                        let html = "";
+                        let newsList = res.data ? res.data : (res.$values ? res.$values : res);
+
+                        if (newsList.length === 0) {
+                            $("#publicNewsGrid").html('<div class="col-12 text-center text-muted my-5"><h4>Aradığınız kriterlere uygun haber bulunamadı.</h4></div>');
+                            return;
+                        }
+
+                        $.each(newsList, function (i, news) {
+                            let imgSrc = news.imagePath || 'https://via.placeholder.com/300x200?text=Gorsel+Yok';
+                             // CKEditor'den gelen HTML etiketlerini temizle (Saf metne çevir)
+                             let plainText = $("<div>").html(news.content).text();
+                             // Saf metni 90 karakterde güvenle kes
+                             let shortContent = plainText.length > 90 ? plainText.substring(0, 90) + '...' : plainText;
+                            let author = news.appUserName || "Anonim";
+                            let category = news.categoryName || "Genel";
+                            let ratingVal = news.averageRating > 0 ? news.averageRating.toFixed(1) : "0.0";
+
+                            html += `
+                            <div class="col-xl-3 col-lg-3 col-md-6 col-sm-12">
+                                <div class="card h-100 shadow-sm border-0 news-card">
+                                    <img src="${imgSrc}" class="card-img-top" style="height: 180px; object-fit: cover; border-radius: 12px 12px 0 0;">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1">${category}</span>
+                                            <span class="text-warning fw-bold small"><i class="fas fa-star me-1"></i>${ratingVal}</span>
+                                        </div>
+                                        <h6 class="card-title fw-bold mb-2">${news.title}</h6>
+                                        <p class="card-text text-muted flex-grow-1" style="font-size: 0.85rem;">${shortContent}</p>
+                                    </div>
+                                    <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center pb-3">
+                                        <small class="text-muted fw-semibold">
+                                            <i class="far fa-comment-dots me-1"></i> ${news.commentCount}
+                                            <i class="far fa-eye ms-2 me-1"></i> ${news.viewCount}
+                                        </small>
+                                        <button onclick="checkLoginAndRead(${news.id})" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold">İncele</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                        $("#publicNewsGrid").html(html);
+                    }
+                });
+            }
+        });
+
+        window.checkLoginAndRead = function(newsId) {
+            if (!localStorage.getItem("token")) {
+                Swal.fire({ title: 'Giriş Yapmalısınız', icon: 'lock', showCancelButton: true, confirmButtonText: 'Giriş Yap' })
+                    .then((r) => { if (r.isConfirmed) window.location.href = "/Auth/Login"; });
+            } else { window.location.href = "/Home/NewsDetail/" + newsId; }
+        }
+    </script>
+}

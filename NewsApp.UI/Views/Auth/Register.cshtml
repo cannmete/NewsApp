@@ -1,0 +1,161 @@
+﻿@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<style>
+    body {
+        background-color: #f4f7f6;
+    }
+
+    .auth-card {
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        border: none;
+    }
+
+    .auth-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 20px;
+        text-align: center;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        padding: 12px 20px;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+    }
+
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #2a5298;
+            background-color: #fff;
+        }
+
+    .btn-register {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: bold;
+        font-size: 1.1rem;
+        transition: transform 0.2s;
+    }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.3);
+        }
+</style>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <div class="card auth-card">
+                <div class="auth-header">
+                    <h2 class="fw-bold mb-2"><i class="fas fa-user-plus me-2"></i>KetchNews'e Katıl</h2>
+                    <p class="mb-0 text-white-50">Gündemi kaçırmamak için hemen hesap oluşturun.</p>
+                </div>
+                <div class="card-body p-5">
+                    <form id="registerForm">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small">Ad Soyad <span class="text-muted fw-normal">(İsteğe Bağlı)</span></label>
+                            <input type="text" id="txtFullName" class="form-control" placeholder="Adınızı ve soyadınızı girin">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small">Kullanıcı Adı</label>
+                            <input type="text" id="txtUsername" class="form-control" placeholder="Kullanıcı adınızı belirleyin" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small">E-Posta Adresi</label>
+                            <input type="email" id="txtEmail" class="form-control" placeholder="ornek@mail.com" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-bold text-secondary small">Şifre</label>
+                                <input type="password" id="txtPassword" class="form-control" placeholder="••••••••" required>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-bold text-secondary small">Şifre Tekrar</label>
+                                <input type="password" id="txtConfirmPassword" class="form-control" placeholder="••••••••" required>
+                            </div>
+                        </div>
+
+                        <button type="button" id="btnRegister" class="btn btn-primary w-100 btn-register text-white mt-2">Hesap Oluştur</button>
+                    </form>
+
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <span class="text-muted small">Zaten bir hesabınız var mı?</span>
+                        <a href="/Auth/Login" class="text-primary fw-bold text-decoration-none ms-1">Giriş Yap</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            $("#btnRegister").click(function () {
+                let fullName = $("#txtFullName").val().trim();
+                let username = $("#txtUsername").val().trim();
+                let email = $("#txtEmail").val().trim();
+                let password = $("#txtPassword").val();
+                let confirmPassword = $("#txtConfirmPassword").val();
+
+                // 1. Basit Doğrulamalar (Validation)
+                if (!username || !email || !password) {
+                    Swal.fire("Eksik Bilgi", "Kullanıcı Adı, E-Posta ve Şifre alanları zorunludur.", "warning");
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    Swal.fire("Hata", "Şifreler birbiriyle eşleşmiyor!", "error");
+                    return;
+                }
+
+                // Butonu pasif yap
+                let btn = $(this);
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i>Kayıt Yapılıyor...');
+
+                // 2. API'ye Gönderilecek Veri (Backend'deki RegisterDto ile tam eşleşmeli)
+                let payload = {
+                    FullName: fullName,
+                    UserName: username, // 'N' harfi DTO'daki gibi büyük
+                    Email: email,
+                    Password: password
+                };
+
+                // 3. AJAX ile API'ye POST İsteği
+                $.ajax({
+                    url: "https://localhost:7112/api/Auth/Register",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        Swal.fire("Başarılı!", "Hesabınız başarıyla oluşturuldu. Lütfen giriş yapın.", "success").then(() => {
+                            window.location.href = "/Auth/Login";
+                        });
+                    },
+                    error: function (err) {
+                        btn.prop("disabled", false).text("Hesap Oluştur");
+
+                        let errorMsg = "Kayıt işlemi başarısız oldu.";
+                        if(err.responseJSON && err.responseJSON.message) {
+                            errorMsg = err.responseJSON.message;
+                        } else if (err.responseText) {
+                            errorMsg = "Bu kullanıcı adı veya e-posta zaten kullanılıyor olabilir.";
+                        }
+
+                        Swal.fire("Hata", errorMsg, "error");
+                    }
+                });
+            });
+
+        });
+    </script>
+}
