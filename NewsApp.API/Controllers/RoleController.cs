@@ -1,10 +1,9 @@
-﻿using NewsApp.API.DTOs;
-using NewsApp.API.Models;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using NewsApp.API.DTOs;
+using Microsoft.EntityFrameworkCore;
 using NewsApp.API.Models;
+using NewsApp.API.DTOs;
 
 namespace NewsApp.API.Controllers
 {
@@ -14,54 +13,55 @@ namespace NewsApp.API.Controllers
     public class RoleController : ControllerBase
     {
         private readonly RoleManager<AppRole> _roleManager;
-        private readonly UserManager<AppUser> _userManager;
 
-        public RoleController(RoleManager<AppRole> roleManager, UserManager<AppUser> userManager)
+        public RoleController(RoleManager<AppRole> roleManager)
         {
             _roleManager = roleManager;
-            _userManager = userManager;
         }
 
-        
-        [HttpPost("CreateRole")]
-        public async Task<IActionResult> CreateRole(string roleName)
+        // 1. ROLLERİ GETİR (AJAX GET isteği buraya düşer)
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
         {
-            var roleExists = await _roleManager.RoleExistsAsync(roleName);
+            // MVC tarafındaki tablonun ID ve Name okuyabilmesi için ikisini de gönderiyoruz
+            var roles = await _roleManager.Roles.Select(r => new { r.Id, r.Name }).ToListAsync();
+            return Ok(roles);
+        }
+
+        // AJAX'tan gelen JSON verisini karşılamak için ufak bir sınıf
+        public class RoleAddDto { public string Name { get; set; } }
+
+        // 2. ROL EKLE (AJAX POST isteği buraya düşer)
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] RoleAddDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new ResultDto { Status = false, Message = "Rol adı boş olamaz." });
+
+            var roleExists = await _roleManager.RoleExistsAsync(dto.Name);
             if (roleExists)
                 return BadRequest(new ResultDto { Status = false, Message = "Bu rol zaten mevcut!" });
 
-            var result = await _roleManager.CreateAsync(new AppRole { Name = roleName });
+            var result = await _roleManager.CreateAsync(new AppRole { Name = dto.Name });
             if (result.Succeeded)
-                return Ok(new ResultDto { Status = true, Message = $"{roleName} rolü başarıyla oluşturuldu." });
+                return Ok(new ResultDto { Status = true, Message = "Rol başarıyla oluşturuldu." });
 
-            return StatusCode(StatusCodes.Status500InternalServerError, new ResultDto { Status = false, Message = "Rol oluşturulamadı." });
+            return StatusCode(500, new ResultDto { Status = false, Message = "Rol oluşturulamadı." });
         }
 
-        
-        [HttpPost("AssignRoleToUser")]
-        public async Task<IActionResult> AssignRoleToUser(string userName, string roleName)
+        // 3. ROL SİL (AJAX DELETE isteği buraya düşer)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(string id)
         {
-            var user = await _userManager.FindByNameAsync(userName);
-            if (user == null)
-                return NotFound(new ResultDto { Status = false, Message = "Kullanıcı bulunamadı." });
+            var role = await _roleManager.FindByIdAsync(id);
+            if (role == null)
+                return NotFound(new ResultDto { Status = false, Message = "Rol bulunamadı." });
 
-            var roleExists = await _roleManager.RoleExistsAsync(roleName);
-            if (!roleExists)
-                return NotFound(new ResultDto { Status = false, Message = "Böyle bir rol sistemde yok." });
-
-            var result = await _userManager.AddToRoleAsync(user, roleName);
+            var result = await _roleManager.DeleteAsync(role);
             if (result.Succeeded)
-                return Ok(new ResultDto { Status = true, Message = $"{userName} adlı kullanıcıya {roleName} yetkisi verildi." });
+                return Ok(new ResultDto { Status = true, Message = "Rol başarıyla silindi." });
 
-            return BadRequest(new ResultDto { Status = false, Message = "Rol ataması başarısız oldu." });
-        }
-
-        
-        [HttpGet("GetAllRoles")]
-        public IActionResult GetAllRoles()
-        {
-            var roles = _roleManager.Roles.Select(r => r.Name).ToList();
-            return Ok(roles);
+            return BadRequest(new ResultDto { Status = false, Message = "Silme işlemi başarısız oldu." });
         }
     }
 }

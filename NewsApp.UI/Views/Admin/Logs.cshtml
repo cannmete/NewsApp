@@ -1,0 +1,91 @@
+﻿@{
+    ViewData["Title"] = "Sistem Logları";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<header class="page-header">
+    <h2><i class="fas fa-history me-2"></i>Sistem Hareketleri</h2>
+</header>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card card-modern shadow-sm border-0 rounded-4">
+            <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+                <h4 class="card-title fw-bold text-dark mb-0">Tüm Kayıtlar</h4>
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="loadSystemLogs()">
+                    <i class="fas fa-sync-alt me-1"></i> Yenile
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-4" style="width: 200px;">Tarih / Saat</th>
+                                <th style="width: 200px;">İşlem Türü</th>
+                                <th>Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullLogsTableBody">
+                            <tr><td colspan="3" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>Kayıtlar yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Sayfa açıldığında logları yükle
+            window.loadSystemLogs();
+        });
+
+        window.loadSystemLogs = function() {
+            const token = localStorage.getItem("token");
+            $("#fullLogsTableBody").html('<tr><td colspan="3" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>Kayıtlar yükleniyor...</td></tr>');
+
+            $.ajax({
+                url: "https://localhost:7112/api/SystemLog",
+                type: "GET",
+                headers: { "Authorization": "Bearer " + token },
+                success: function (res) {
+                    let logs = res.data ? res.data : (res.$values ? res.$values : res);
+                    let html = "";
+
+                    if (!logs || logs.length === 0) {
+                        $("#fullLogsTableBody").html('<tr><td colspan="3" class="text-center py-5 text-muted">Henüz sistemde hiçbir hareket kaydedilmemiş.</td></tr>');
+                        return;
+                    }
+
+                    $.each(logs, function (i, log) {
+                        let dateObj = new Date(log.createdDate || log.CreatedDate);
+                        let dateStr = dateObj.toLocaleDateString('tr-TR') + " " + dateObj.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+
+                        let badgeClass = "bg-secondary";
+                        let actionName = log.action || log.Action;
+
+                        if(actionName.includes("Haber")) badgeClass = "bg-primary";
+                        if(actionName.includes("Kayıt")) badgeClass = "bg-success";
+                        if(actionName.includes("Yorum")) badgeClass = "bg-warning text-dark";
+                        if(actionName.includes("Kategori")) badgeClass = "bg-info text-dark";
+
+                        html += `
+                        <tr>
+                            <td class="ps-4 fw-semibold text-muted"><i class="far fa-clock me-2"></i>${dateStr}</td>
+                            <td><span class="badge ${badgeClass} shadow-sm px-3 py-2 w-100">${actionName}</span></td>
+                            <td class="text-dark fw-medium">${log.details || log.Details}</td>
+                        </tr>`;
+                    });
+
+                    $("#fullLogsTableBody").html(html);
+                },
+                error: function() {
+                    $("#fullLogsTableBody").html('<tr><td colspan="3" class="text-center py-5 text-danger">Loglar çekilirken bir hata oluştu!</td></tr>');
+                }
+            });
+        }
+    </script>
+}

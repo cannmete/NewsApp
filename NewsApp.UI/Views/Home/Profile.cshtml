@@ -1,0 +1,323 @@
+﻿@{
+    ViewData["Title"] = "Profilim";
+}
+
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border-radius: 20px;
+        padding: 40px 20px;
+        color: white;
+        margin-bottom: 30px;
+    }
+
+    .avatar-large {
+        border: 5px solid rgba(255,255,255,0.3);
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: #2a5298;
+        border-radius: 10px;
+    }
+
+    .nav-pills .nav-link {
+        color: #6c757d;
+        font-weight: bold;
+        padding: 12px 20px;
+    }
+</style>
+
+<div class="container my-5">
+
+    <div class="profile-header shadow d-flex align-items-center justify-content-center text-center">
+        <div>
+            <img src="" id="displayAvatar" class="rounded-circle avatar-large shadow mb-3" alt="Avatar">
+
+            <h2 class="fw-bold mb-1" id="displayFullName">Yükleniyor...</h2>
+            <p class="mb-3 opacity-75">@@<span id="displayUserName">username</span> | <span id="displayEmail">email</span></p>
+
+            <span class="badge bg-light text-dark px-3 py-2 rounded-pill shadow-sm" id="profileRole">
+                Yükleniyor...
+            </span>
+
+            <div class="mt-4">
+                <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="openEditModal()">
+                    <i class="fas fa-user-edit me-2"></i> Profili Düzenle
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4 justify-content-center" id="pills-tab" role="tablist">
+        <li class="nav-item" role="presentation" id="tabWriter" style="display: none;">
+            <button class="nav-link" id="pills-news-tab" data-bs-toggle="pill" data-bs-target="#pills-news" type="button">
+                <i class="fas fa-newspaper me-2"></i>Yazdığım Haberler
+            </button>
+        </li>
+
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pills-comments-tab" data-bs-toggle="pill" data-bs-target="#pills-comments" type="button">
+                <i class="fas fa-comments me-2"></i>Yorumlarım
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="pills-tabContent">
+
+        <div class="tab-pane fade" id="pills-news" role="tabpanel">
+            <div class="row" id="myNewsList">
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-spinner fa-spin me-2"></i>Haberler yükleniyor...
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade show active" id="pills-comments" role="tabpanel">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <div id="myCommentsList">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Yorumlar yükleniyor...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="fw-bold"><i class="fas fa-user-edit me-2 text-primary"></i>Profil Bilgilerini Güncelle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+
+                <div class="text-center mb-4">
+                    <div class="position-relative d-inline-block">
+                        <img src="" id="editAvatarPreview" class="rounded-circle shadow-sm border border-light" width="100" height="100" style="object-fit: cover;">
+                        <label for="profileUpload" class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle p-2 shadow" style="cursor: pointer; width: 35px; height: 35px; line-height: 20px;">
+                            <i class="fas fa-camera"></i>
+                            <input type="file" id="profileUpload" style="display: none;" accept="image/*">
+                        </label>
+                    </div>
+                    <div class="small text-muted mt-2">Fotoğrafı değiştirmek için ikonuna tıklayın</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Ad Soyad</label>
+                    <input type="text" id="editFullName" class="form-control rounded-pill px-3 shadow-sm border-light">
+                </div>
+
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">Kullanıcı Adı</label>
+                    <input type="text" id="editUserName" class="form-control rounded-pill px-3 shadow-sm border-light">
+                </div>
+
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">E-posta Adresi</label>
+                    <input type="email" id="editEmail" class="form-control rounded-pill px-3 shadow-sm border-light">
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 p-4 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" id="btnUpdateProfile" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">Güncelle</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                window.location.href = "/Auth/Login";
+                return;
+            }
+
+            // --- TOKEN ÇÖZÜCÜ (ROL TESPİTİ İÇİN) ---
+            function parseJwt(t) {
+                try { return JSON.parse(atob(t.split('.')[1])); }
+                catch (e) { return null; }
+            }
+
+            const decodedToken = parseJwt(token);
+            let role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
+            if (Array.isArray(role)) role = role[0];
+
+            let displayRole = role === "Admin" ? "Yönetici" : (role === "Writer" ? "İçerik Yazarı" : "Okur");
+            $("#profileRole").html(`<i class="fas fa-id-badge me-2"></i>${displayRole}`);
+
+            // Sekmeleri Rol'e Göre Ayarla
+            if (role === "Writer" || role === "Admin") {
+                $("#tabWriter").show();
+                $("#pills-comments-tab").removeClass("active");
+                $("#pills-comments").removeClass("show active");
+                $("#pills-news-tab").addClass("active");
+                $("#pills-news").addClass("show active");
+                LoadMyNews();
+            }
+
+            LoadMyComments();
+
+            // --- PROFİL BİLGİLERİNİ GETİR (/api/User/Me) ---
+            function loadProfile() {
+                $.ajax({
+                    url: "https://localhost:7112/api/User/Me",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (user) {
+                        $("#displayFullName").text(user.fullName || "Ad Soyad");
+                        $("#displayUserName").text(user.userName || "kullanici");
+                        $("#displayEmail").text(user.email || "");
+
+                        let avatarUrl = user.profilePhotoPath || `https://ui-avatars.com/api/?name=${user.fullName}&background=fff&color=2a5298&bold=true`;
+                        $("#displayAvatar").attr("src", avatarUrl);
+                    }
+                });
+            }
+            loadProfile();
+
+            // --- MODALI AÇ VE VERİLERİ DOLDUR ---
+            window.openEditModal = function() {
+                $("#editFullName").val($("#displayFullName").text());
+                $("#editUserName").val($("#displayUserName").text());
+                $("#editEmail").val($("#displayEmail").text());
+                $("#editAvatarPreview").attr("src", $("#displayAvatar").attr("src"));
+                localStorage.removeItem("tempProfilePhotoPath");
+                $("#editProfileModal").modal("show");
+            };
+
+            // --- FOTOĞRAF SEÇ VE YÜKLE ---
+            $("#profileUpload").change(function() {
+                const file = this.files[0];
+                if (file) {
+                    if(!file.type.startsWith('image/')){
+                        Swal.fire("Hata", "Lütfen sadece resim dosyası seçin.", "error"); return;
+                    }
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    $.ajax({
+                        url: "https://localhost:7112/api/News/Upload",
+                        type: "POST",
+                        headers: { "Authorization": "Bearer " + token },
+                        data: formData,
+                        processData: false, contentType: false,
+                        success: function(res) {
+                            $("#editAvatarPreview").attr("src", res.url);
+                            localStorage.setItem("tempProfilePhotoPath", res.url);
+                        },
+                        error: function() { Swal.fire("Hata", "Fotoğraf yüklenemedi.", "error"); }
+                    });
+                }
+            });
+
+            // --- BİLGİLERİ GÜNCELLE (SAVE) ---
+            $("#btnUpdateProfile").click(function() {
+                const payload = {
+                    FullName: $("#editFullName").val(),
+                    UserName: $("#editUserName").val(),
+                    Email: $("#editEmail").val(),
+                    ProfilePhotoPath: localStorage.getItem("tempProfilePhotoPath") || ($("#displayAvatar").attr("src").includes("ui-avatars") ? null : $("#displayAvatar").attr("src"))
+                };
+
+                $.ajax({
+                    url: "https://localhost:7112/api/User/UpdateProfile",
+                    type: "PUT",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify(payload),
+                    success: function() {
+                        Swal.fire("Başarılı!", "Profiliniz güncellendi. Yeniden giriş yapmalısınız.", "success").then(() => {
+                            localStorage.removeItem("token");
+                            localStorage.removeItem("tempProfilePhotoPath");
+                            window.location.href = "/Auth/Login";
+                        });
+                    },
+                    error: function(err) {
+                        let errorMsg = "Güncelleme başarısız.";
+                        if (err.responseJSON && err.responseJSON[0]) errorMsg = err.responseJSON[0].description;
+                        Swal.fire("Hata", errorMsg, "error");
+                    }
+                });
+            });
+
+            // --- HABERLERİMİ GETİR ---
+            function LoadMyNews() {
+                $.ajax({
+                    url: "https://localhost:7112/api/News/MyNews",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) {
+                        let newsList = res.data ? res.data : (res.$values ? res.$values : res);
+                        let html = "";
+                        if (!newsList || newsList.length === 0) {
+                            $("#myNewsList").html("<div class='col-12 text-center text-muted'>Henüz bir haber yazmadınız.</div>"); return;
+                        }
+                        $.each(newsList, function (i, n) {
+                            html += `
+                            <div class="col-md-6 mb-4">
+                                <div class="card shadow-sm border-0 rounded-4 h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">${n.categoryName || "Genel"}</span>
+                                            <small class="text-muted"><i class="far fa-eye me-1"></i>${n.viewCount}</small>
+                                        </div>
+                                        <h5 class="fw-bold">
+                                            <a href="/Home/NewsDetail/${n.id}" class="text-dark text-decoration-none">${n.title}</a>
+                                        </h5>
+                                    </div>
+                                </div>
+                            </div>`;
+                        });
+                        $("#myNewsList").html(html);
+                    }
+                });
+            }
+
+            // --- YORUMLARIMI GETİR ---
+            function LoadMyComments() {
+                $.ajax({
+                    url: "https://localhost:7112/api/Comment/MyComments",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) {
+                        let comments = res.data ? res.data : (res.$values ? res.$values : res);
+                        let html = "";
+                        if (!comments || comments.length === 0) {
+                            $("#myCommentsList").html("<div class='text-center text-muted'>Henüz hiçbir habere yorum yapmadınız.</div>"); return;
+                        }
+                        $.each(comments, function (i, c) {
+                            let statusBadge = c.isApproved
+                                ? `<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Onaylandı</span>`
+                                : `<span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2">Onay Bekliyor</span>`;
+                            html += `
+                            <div class="border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <a href="/Home/NewsDetail/${c.newsId}" class="text-primary fw-bold text-decoration-none">
+                                        <i class="fas fa-link me-1"></i>${c.newsTitle}
+                                    </a>
+                                    ${statusBadge}
+                                </div>
+                                <p class="text-secondary mb-0">"${c.text}"</p>
+                            </div>`;
+                        });
+                        $("#myCommentsList").html(html);
+                    }
+                });
+            }
+
+        });
+    </script>
+}

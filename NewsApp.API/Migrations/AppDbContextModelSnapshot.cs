@@ -321,6 +321,18 @@ namespace NewsApp.API.Migrations
                     b.Property<string>("ImagePath")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ImagePath2")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImagePath3")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImagePath4")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImagePath5")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -377,6 +389,30 @@ namespace NewsApp.API.Migrations
                     b.HasIndex("NewsId");
 
                     b.ToTable("Ratings");
+                });
+
+            modelBuilder.Entity("NewsApp.API.Models.SystemLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemLogs");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

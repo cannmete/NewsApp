@@ -1,0 +1,85 @@
+﻿@{
+    ViewData["Title"] = "Yorum Moderasyonu";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="card shadow-sm border-0 rounded-4">
+    <div class="card-header bg-white border-bottom p-4">
+        <h4 class="mb-0 fw-bold"><i class="fas fa-comments text-primary me-2"></i>Onay Bekleyen Yorumlar</h4>
+    </div>
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Kullanıcı</th>
+                        <th>Haber Başlığı</th>
+                        <th>Yorum Metni</th>
+                        <th class="text-center">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingCommentsTable">
+                    <tr><td colspan="4" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const token = localStorage.getItem("token");
+
+            function LoadPendingComments() {
+                $.ajax({
+                    url: "https://localhost:7112/api/Comment/Pending",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) {
+                        let comments = res.data ? res.data : (res.$values ? res.$values : res);
+                        let html = "";
+
+                        if (comments.length === 0) {
+                            $("#pendingCommentsTable").html('<tr><td colspan="4" class="text-center py-4 text-success fw-bold"><i class="fas fa-check-circle me-2"></i>Bekleyen yorum yok, harika!</td></tr>');
+                            return;
+                        }
+
+                        $.each(comments, function (i, c) {
+                            html += `
+                            <tr>
+                                <td><strong><i class="fas fa-user-circle text-muted me-1"></i>${c.userName}</strong></td>
+                                <td><span class="badge bg-secondary">${c.newsTitle}</span></td>
+                                <td style="max-width: 300px; white-space: normal;">"${c.text}"</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-success shadow-sm me-1" onclick="ApproveComment(${c.id})"><i class="fas fa-check"></i> Onayla</button>
+                                    <button class="btn btn-sm btn-danger shadow-sm" onclick="DeleteComment(${c.id})"><i class="fas fa-trash"></i> Sil</button>
+                                </td>
+                            </tr>`;
+                        });
+                        $("#pendingCommentsTable").html(html);
+                    }
+                });
+            }
+            LoadPendingComments(); // Sayfa açılınca çalıştır
+
+            window.ApproveComment = function (id) {
+                $.ajax({
+                    url: "https://localhost:7112/api/Comment/Approve/" + id, type: "PUT", headers: { "Authorization": "Bearer " + token },
+                    success: function () { Swal.fire("Başarılı", "Yorum yayına alındı.", "success"); LoadPendingComments(); }
+                });
+            };
+
+            window.DeleteComment = function (id) {
+                Swal.fire({ title: "Emin misiniz?", text: "Bu yorum kalıcı olarak silinecek!", icon: "warning", showCancelButton: true, confirmButtonText: "Evet, Sil!" }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "https://localhost:7112/api/Comment/" + id, type: "DELETE", headers: { "Authorization": "Bearer " + token },
+                            success: function () { Swal.fire("Silindi!", "Yorum çöpe atıldı.", "success"); LoadPendingComments(); }
+                        });
+                    }
+                });
+            };
+        });
+    </script>
+}

@@ -1,0 +1,122 @@
+﻿@{
+    // Bu sayfa için şablon kullanmıyoruz (Menüler gizli kalmalı)
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Giriş Yap - KetchNews</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
+
+    <style>
+        body {
+            background-color: #1d2127; /* Porto Admin temasına uygun koyu arka plan */
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <h3 class="text-dark"><i class="fas fa-bolt text-warning"></i> NewsApp</h3>
+            <p class="text-muted">Yönetim Paneline Giriş</p>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Kullanıcı Adı</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                <input type="text" id="txtUserName" class="form-control" placeholder="Örn: admin">
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Şifre</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                <input type="password" id="txtPassword" class="form-control" placeholder="••••••••">
+            </div>
+        </div>
+
+        <button id="btnLogin" class="btn btn-primary w-100 py-2">
+            <i class="fas fa-sign-in-alt me-2"></i> Giriş Yap
+        </button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            
+            if (localStorage.getItem("token") !== null) {
+                window.location.href = "/Admin/Index";
+            }
+
+            $("#btnLogin").click(function () {
+                // txtEmail yerine txtUserName id'sinden değeri alıyoruz
+                let userName = $("#txtUserName").val();
+                let password = $("#txtPassword").val();
+
+                // Boşluk kontrolünü userName'e göre güncelledik
+                if(userName === "" || password === "") {
+                    Swal.fire("Uyarı!", "Lütfen tüm alanları doldurun.", "warning");
+                    return;
+                }
+
+                let btn = $(this);
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-2"></i> Bekleyiniz...');
+
+                $.ajax({
+                    url: "https://localhost:7112/api/Auth/Login",
+                    type: "POST",
+                    contentType: "application/json",
+                    // Swagger'ın beklediği şemaya uygun olarak "userName" ve "password" gönderiyoruz
+                    data: JSON.stringify({ userName: userName, password: password }),
+                    success: function (response) {
+                        console.log("Giriş Başarılı:", response);
+
+                        let userToken = response.token || response.Token;
+                        localStorage.setItem("token", userToken);
+
+                        Swal.fire({
+                            title: "Başarılı!",
+                            text: "Giriş işlemi onaylandı, yönlendiriliyorsunuz...",
+                            icon: "success",
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.href = "/Home/Index";
+                        });
+                    },
+                    error: function (err) {
+                        console.log("Giriş Hatası:", err);
+                        btn.prop("disabled", false).html('<i class="fas fa-sign-in-alt me-2"></i> Giriş Yap');
+                        Swal.fire("Hata!", "Kullanıcı adı veya şifre hatalı.", "error");
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

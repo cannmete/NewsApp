@@ -1,0 +1,301 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Yönetici Paneli</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- FontAwesome (İkonlar için) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <!-- SweetAlert2 (AJAX işlemleri sonrası şık bildirimler göstermek için mükemmeldir) -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
+
+    <script>
+        // Bouncer (Güvenlik Görevlisi) - Sayfa yüklenmeden çalışır!
+        const userToken = localStorage.getItem("token");
+
+        if (!userToken) {
+            // Bileti yoksa Login'e
+            window.location.href = "/Auth/Login";
+        } else {
+            // Bileti varsa içeriğini oku
+            function parseJwt(token) {
+                try { return JSON.parse(atob(token.split('.')[1])); }
+                catch (e) { return null; }
+            }
+
+            const decodedToken = parseJwt(userToken);
+            let role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
+
+            // Eğer rol bir dizi (array) olarak gelirse ilkini al
+            if (Array.isArray(role)) role = role[0];
+
+            // Yetki Kontrolü: Rolü sadece "User" ise anında Ana Sayfaya şutla!
+            if (role === "User") {
+                alert("Uyarı: Yönetim paneline giriş yetkiniz bulunmamaktadır!");
+                window.location.href = "/Home/Index"; // Kullanıcıyı kendi dünyasına (UI) geri gönder
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+        }
+
+        /* Sol Menü (Sidebar) Stilleri */
+        .sidebar {
+            height: 100vh;
+            background-color: #1d2127;
+            color: white;
+            position: fixed;
+            width: 250px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background-color: #171a1f;
+            text-align: center;
+            border-bottom: 1px solid #2b3038;
+        }
+
+        .sidebar a {
+            color: #a1a8b3;
+            text-decoration: none;
+            padding: 15px 20px;
+            display: block;
+            border-bottom: 1px solid #2b3038;
+            transition: 0.3s;
+        }
+
+            .sidebar a:hover, .sidebar a.active {
+                background-color: #2b3038;
+                color: #ffffff;
+                border-left: 4px solid #007bff;
+            }
+
+        /* Ana İçerik Alanı */
+        .main-content {
+            margin-left: 250px;
+            padding: 25px;
+            transition: all 0.3s;
+        }
+
+        /* Üst Bilgi Barı */
+        .top-navbar {
+            background-color: white;
+            padding: 15px 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+
+        /* Kart Stilleri */
+        .card {
+            border: none;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SOL MENÜ -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h4 class="m-0"><i class="fas fa-bolt text-warning"></i> KetchNews</h4>
+        </div>
+        <!-- Menü Linkleri (İleride bunlara tıkladığımızda ilgili View'lar açılacak) -->
+        <a href="/Admin/Index"><i class="fas fa-home me-2"></i> Ana Sayfa</a>
+        <a href="/Admin/Categories"><i class="fas fa-list me-2"></i> Kategoriler</a>
+        <a href="/Admin/News"><i class="fas fa-newspaper me-2"></i> Haberler</a>
+        
+            <a class="nav-link" href="/Admin/Logs">
+                <i class="fas fa-history" aria-hidden="true"></i>
+                <span>Sistem Logları</span>
+            </a>
+        <a href="/Home/Index"><i class="fas fa-user me-2"></i> User - Index</a>
+
+        <!-- Çıkış Yap Butonu -->
+        <a href="#" id="btnLogout" class="text-danger mt-4" style="border-top: 1px solid #2b3038;">
+            <i class="fas fa-sign-out-alt me-2"></i> Çıkış Yap
+        </a>
+    </div>
+
+    <!-- ANA İÇERİK -->
+    <div class="main-content">
+        <!-- Üst Bar -->
+        <div class="top-navbar d-flex justify-content-between align-items-center">
+            <h4 class="m-0 text-secondary">@ViewData["Title"]</h4>
+
+            <div class="dropdown">
+                <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: inherit;">
+                    <div class="text-end me-2 d-none d-sm-block">
+                        <span class="d-block fw-bold text-dark" id="loggedInUsername" style="font-size: 15px;">Yükleniyor...</span>
+                        <span class="badge bg-secondary" id="loggedInUserRole" style="font-size: 11px;">Yetki Bekleniyor</span>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name=U" alt="Profil" class="rounded-circle shadow-sm border border-2 border-white" width="45" height="45" id="userAvatar">
+                </a>
+
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="profileDropdown">
+                    <li>
+                        <a class="dropdown-item py-2" href="/Home/Profile">
+                            <i class="fas fa-user-cog text-primary me-2"></i> Profil Ayarları
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item py-2 text-danger" href="#" onclick="cikisYap(event)">
+                            <i class="fas fa-sign-out-alt me-2"></i> Çıkış Yap
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Controller'dan dönen View'ların HTML kodları tam olarak buraya basılacak -->
+        @RenderBody()
+
+    </div>
+
+    <!-- KÜTÜPHANELER -->
+    <!-- 1. JQUERY (AJAX işlemleri için olmazsa olmazımız) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- 2. Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 3. SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            // Çıkış Yap İşlemi
+            $("#btnLogout").click(function (e) {
+                e.preventDefault();
+
+                Swal.fire({
+                    title: 'Çıkış yapılıyor...',
+                    text: "Oturumunuz sonlandırılacak. Emin misiniz?",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Evet, Çıkış Yap',
+                    cancelButtonText: 'Vazgeç'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // 1. Tarayıcıdaki tüm biletleri ve verileri sil
+                        localStorage.clear();
+
+                        // 2. Kullanıcıyı giriş sayfasına yönlendir
+                        window.location.href = "/Auth/Login";
+                    }
+                });
+            });
+
+            // Global AJAX Ayarı: Her isteğe otomatik Token ekle
+            // Bu sayede her sayfada tek tek headers yazmak zorunda kalmazsın
+            $.ajaxSetup({
+                beforeSend: function (xhr) {
+                    const token = localStorage.getItem("token");
+                    if (token) {
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                    }
+                },
+                error: function (xhr) {
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        localStorage.clear();
+                        window.location.href = "/Auth/Login";
+                    }
+                }
+            });
+                $(document).ready(function () {
+            // Token'ı çözen (Decode) fonksiyon
+            function parseJwt(token) {
+                try {
+                    return JSON.parse(atob(token.split('.')[1]));
+                } catch (e) {
+                    return null;
+                }
+            }
+
+                const token = localStorage.getItem("token");
+                if (token) {
+                    const decodedToken = parseJwt(token);
+                    // .NET Identity token'ında kullanıcı adı genelde bu uzun isimli claim içinde tutulur
+                    const username = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "Admin";
+
+                    // Sağ üstteki profil ismini güncelle
+                    $("#loggedInUsername").text(username);
+                }
+            });
+
+        $(document).ready(function () {
+             function parseJwt(token) {
+                 try {
+                     return JSON.parse(atob(token.split('.')[1]));
+                 } catch (e) {
+                     return null;
+                 }
+             }
+
+             const token = localStorage.getItem("token");
+             if (token) {
+                 const decodedToken = parseJwt(token);
+
+                 // 1. İsim ve Rol bilgilerini Token'dan çek
+                 const username = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] || "Kullanıcı";
+                 let role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
+
+                 // (Kullanıcının birden fazla rolü varsa array olarak gelebilir, ilkini alıyoruz)
+                 if (Array.isArray(role)) {
+                     role = role[0];
+                 }
+
+                 // 2. Arayüzdeki metinleri güncelle
+                 $("#loggedInUsername").text(username);
+                 $("#loggedInUserRole").text(role);
+
+                 // 3. Role göre badge rengini değiştirme (Görsel Zenginlik)
+                 const roleBadge = $("#loggedInUserRole");
+                 roleBadge.removeClass("bg-secondary"); // Varsayılanı sil
+                 if(role === "Admin") roleBadge.addClass("bg-danger");       // Admin ise Kırmızı
+                 else if(role === "Writer") roleBadge.addClass("bg-success");// Yazar ise Yeşil
+                 else roleBadge.addClass("bg-info text-dark");               // User ise Mavi
+
+                 // 4. Avatarı oluştur ve bas
+                 const avatarUrl = `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&rounded=true&bold=true`;
+                 $("#userAvatar").attr("src", avatarUrl);
+             }
+         });
+
+         // Çıkış Yap Fonksiyonu
+         function cikisYap(event) {
+             event.preventDefault();
+             var onay = confirm("Oturumunuz sonlandırılacak. Emin misiniz?");
+             if (onay) {
+                 localStorage.clear();
+                 window.location.href = "/Auth/Login";
+             }
+         }
+     });
+    </script>
+
+    <!--
+        Çok Önemli: RenderSectionAsync!
+        Alt sayfalarda (Örneğin Haber Ekleme sayfası) yazacağımız jQuery AJAX kodlarını
+        @section Scripts {
+            ...
+        }
+ tagleri arasına yazacağız.
+        Bu satır, o kodları alıp tam buraya (jQuery yüklendikten sonraya) yerleştirecek.
+    -->
+    @await RenderSectionAsync("Scripts", required: false)
+
+</body>
+</html>

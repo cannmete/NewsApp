@@ -1,5 +1,4 @@
 ﻿using NewsApp.API.Models;
-using NewsApp.API.Models;
 using NewsApp.API.Repositories;
 using System;
 

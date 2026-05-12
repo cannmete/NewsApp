@@ -1,0 +1,263 @@
+﻿@{
+    ViewData["Title"] = "Haber Yönetimi";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+<style>
+    .news-title-link {
+        transition: color 0.2s ease;
+    }
+
+        .news-title-link:hover {
+            color: #2a5298 !important; /* Tema rengine uygun mavi */
+            text-decoration: underline !important;
+        }
+</style>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card p-4 shadow-sm border-0">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold"><i class="fas fa-newspaper text-primary me-2"></i> Haber Listesi</h5>
+                <button class="btn btn-primary" onclick="openNewsModal()">
+                    <i class="fas fa-plus me-1"></i> Yeni Haber Yaz
+                </button>
+            </div>
+            <hr />
+            <table class="table table-hover table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Başlık</th>
+                        <th>Kategori</th>
+                        <th>Yazar ID</th>
+                        <th class="text-center" style="width: 180px;">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="newsTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="newsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newsModalTitle">Haber Girişi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="txtNewsId" value="0" />
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Haber Başlığı</label>
+                            <input type="text" id="txtNewsTitle" class="form-control" placeholder="Haber başlığını giriniz...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Kategori</label>
+                            <select id="ddlCategories" class="form-select">
+                                <option value="">Kategori Seçin...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Haber İçeriği</label>
+                    <textarea id="txtNewsContent" class="form-control" rows="6" placeholder="Haber detaylarını buraya yazın..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Görsel URL (ImagePath)</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-image"></i></span>
+                        <input type="text" id="txtImagePath" class="form-control" placeholder="https://site.com/resim.jpg">
+                    </div>
+                    <small class="text-muted">Şimdilik doğrudan görsel linki verebilirsin.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btnSaveNews">
+                    <i class="fas fa-save me-1"></i> Haberi Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const apiNewsUrl = "https://localhost:7112/api/News";
+            const apiCategoryUrl = "https://localhost:7112/api/Category";
+            const token = localStorage.getItem("token");
+            let newsModal = new bootstrap.Modal(document.getElementById('newsModal'));
+
+            // 1. Sayfa Açıldığında Verileri Yükle
+            LoadNews();
+            LoadCategories();
+
+            // 2. HABERLERİ LİSTELE
+            function LoadNews() {
+                $.ajax({
+                    url: apiNewsUrl,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (res) {
+                            console.log("API'den Gelen Haberler:", res);
+                        let html = "";
+                        $.each(res, function (i, news) {
+                            // Yeni eklediğimiz yazar ve kategori isimlerini kullanıyoruz
+                            let author = news.appUserName || "Bilinmiyor";
+                            let category = news.categoryName || "Kategorisiz";
+
+                            html += `<tr>
+            <td class="align-middle"><small class="text-muted">${news.id}</small></td>
+
+            <td class="align-middle">
+                <a href="/Home/NewsDetail/${news.id}" target="_blank" class="text-decoration-none text-dark news-title-link">
+                    <strong>${news.title}</strong>
+                    <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75rem;"></i>
+                </a>
+            </td>
+
+            <td class="align-middle"><span class="badge bg-info text-dark">${category}</span></td>
+            <td class="align-middle"><i class="fas fa-user-edit me-1"></i> ${author}</td>
+
+            <td class="text-center align-middle">
+                <button class="btn btn-sm btn-warning btn-edit shadow-sm"
+                        data-id="${news.id}"
+                        data-title="${news.title}"
+                        data-content="${news.content}"
+                        data-catid="${news.categoryId}"
+                        data-img="${news.imagePath || ''}">
+                    <i class="fas fa-edit"></i> Düzenle
+                </button>
+                <button class="btn btn-sm btn-danger btn-delete shadow-sm" data-id="${news.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+         </tr>`;
+                        });
+                        $("#newsTableBody").html(html);
+                    }
+                });
+            }
+
+            // 3. KATEGORİLERİ DROPDOWN'A DOLDUR
+            function LoadCategories() {
+                $.ajax({
+                    url: apiCategoryUrl,
+                    type: "GET",
+                    success: function (res) {
+                        let options = '<option value="">Kategori Seçin...</option>';
+                        $.each(res, function (i, cat) {
+                            let catId = cat.id || cat.Id;
+                            let catName = cat.name || cat.Name;
+                            options += `<option value="${catId}">${catName}</option>`;
+                        });
+                        $("#ddlCategories").html(options);
+                    }
+                });
+            }
+
+            // 4. MODALI EKLEME MODUNDA AÇ
+            window.openNewsModal = function () {
+                $("#newsModalTitle").text("Yeni Haber Yaz");
+                $("#txtNewsId").val("0"); // 0 olması POST (Ekleme) demek
+                $("#txtNewsTitle").val("");
+                $("#txtNewsContent").val("");
+                $("#txtImagePath").val("");
+                $("#ddlCategories").val("");
+                newsModal.show();
+            };
+
+            // 5. MODALI DÜZENLEME MODUNDA AÇ (YENİ EKLENDİ)
+            $("#newsTableBody").on("click", ".btn-edit", function () {
+                $("#newsModalTitle").text("Haberi Düzenle");
+
+                // Seçilen haberin verilerini HTML içindeki data- attributelarından okuyoruz
+                $("#txtNewsId").val($(this).attr("data-id")); // Gerçek ID gelirse sistem PUT (Güncelleme) yapacak
+                $("#txtNewsTitle").val($(this).attr("data-title"));
+                $("#txtNewsContent").val($(this).attr("data-content"));
+                $("#ddlCategories").val($(this).attr("data-catid"));
+                $("#txtImagePath").val($(this).attr("data-img"));
+
+                newsModal.show();
+            });
+
+            // 6. KAYDET (POST/PUT)
+            $("#btnSaveNews").click(function () {
+                let categoryVal = $("#ddlCategories").val();
+                let title = $("#txtNewsTitle").val().trim();
+                let content = $("#txtNewsContent").val().trim();
+
+                if (!title || !content || categoryVal === "") {
+                    Swal.fire("Uyarı", "Lütfen başlık, içerik ve kategori seçiminizi tamamlayın.", "warning");
+                    return;
+                }
+
+                let id = parseInt($("#txtNewsId").val());
+                let payload = {
+                    id: id,
+                    title: title,
+                    content: content,
+                    categoryId: parseInt(categoryVal),
+                    imagePath: $("#txtImagePath").val(),
+                    viewCount: 0,
+                    isActive: true
+                };
+
+                // ID 0 ise Ekle(POST), 0'dan büyükse Güncelle(PUT)
+                let type = id === 0 ? "POST" : "PUT";
+                let url = id === 0 ? apiNewsUrl : apiNewsUrl + "/" + id;
+
+                $.ajax({
+                    url: url,
+                    type: type,
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify(payload),
+                    success: function () {
+                        newsModal.hide();
+                        Swal.fire("Başarılı", "Haber işlemi tamamlandı.", "success");
+                        LoadNews();
+                    },
+                    error: function(err) {
+                        console.log("Hata detayı:", err);
+                        Swal.fire("Hata", "İşlem sırasında bir sorun oluştu.", "error");
+                    }
+                });
+            });
+
+            // 7. SİLME (DELETE)
+            $("#newsTableBody").on("click", ".btn-delete", function () {
+                let id = $(this).attr("data-id");
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sil'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: apiNewsUrl + "/" + id,
+                            type: "DELETE",
+                            headers: { "Authorization": "Bearer " + token },
+                            success: function () {
+                                Swal.fire("Silindi!", "", "success");
+                                LoadNews();
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}
