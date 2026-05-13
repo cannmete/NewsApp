@@ -22,7 +22,7 @@
         <div class="col-lg-9">
             <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
                 <div class="card-header bg-primary text-white p-4">
-                    <h3 class="mb-0"><i class="fas fa-pen-fancy me-2"></i>Yeni Haber Oluştur</h3>
+                    <h3 class="mb-0" id="pageHeaderTitle"><i class="fas fa-pen-fancy me-2"></i>Yeni Haber Oluştur</h3>
                     <p class="mb-0 text-white-50 mt-1">Okuyucularınızla en güncel ve detaylı gelişmeleri paylaşın.</p>
                 </div>
 
@@ -45,27 +45,74 @@
                         <textarea id="txtContent" class="form-control bg-light border-0" rows="12" placeholder="Haberin detaylarını buraya dökün... Enter tuşu ile paragraflar oluşturabilirsiniz."></textarea>
                     </div>
 
-                    <h5 class="fw-bold mt-5 mb-3 border-bottom pb-2"><i class="fas fa-images text-primary me-2"></i>Haber İçin Görseller</h5>
-                    <div class="row g-3 mb-4">
+                    <h5 class="fw-bold mt-5 mb-3 border-bottom pb-2"><i class="fas fa-images text-primary me-2"></i>Haber Görselleri</h5>
+
+                    <div class="row g-4 mb-4">
                         <div class="col-md-12">
-                            <label class="form-label small text-muted">Kapak Fotoğrafı (Zorunlu)</label>
-                            <input type="file" id="fileImg1" class="form-control" accept="image/*">
+                            <label class="form-label small fw-bold text-muted">Kapak Fotoğrafı (Zorunlu)</label>
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="flex-grow-1">
+                                    <input type="file" id="fileImg1" class="form-control bg-light border-0" accept="image/*">
+                                </div>
+                                <div id="previewContainer1" class="position-relative shadow-sm rounded" style="display:none; width: 120px; height: 80px; background:#f8f9fa;">
+                                    <img id="previewImg1" src="" class="w-100 h-100 rounded" style="object-fit: cover;">
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle shadow" style="width: 25px; height: 25px; padding: 0;" onclick="removeImage(1)">
+                                        <i class="fas fa-times" style="font-size: 10px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="col-md-6">
-                            <label class="form-label small text-muted">Ek Görsel 2</label>
-                            <input type="file" id="fileImg2" class="form-control" accept="image/*">
+                            <label class="form-label small fw-bold text-muted">Ek Görsel 2</label>
+                            <div class="d-flex align-items-start gap-2">
+                                <input type="file" id="fileImg2" class="form-control bg-light border-0 flex-grow-1" accept="image/*">
+                                <div id="previewContainer2" class="position-relative shadow-sm rounded flex-shrink-0" style="display:none; width: 60px; height: 40px; background:#f8f9fa;">
+                                    <img id="previewImg2" src="" class="w-100 h-100 rounded" style="object-fit: cover;">
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle shadow" style="width: 20px; height: 20px; padding: 0;" onclick="removeImage(2)">
+                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="col-md-6">
-                            <label class="form-label small text-muted">Ek Görsel 3</label>
-                            <input type="file" id="fileImg3" class="form-control" accept="image/*">
+                            <label class="form-label small fw-bold text-muted">Ek Görsel 3</label>
+                            <div class="d-flex align-items-start gap-2">
+                                <input type="file" id="fileImg3" class="form-control bg-light border-0 flex-grow-1" accept="image/*">
+                                <div id="previewContainer3" class="position-relative shadow-sm rounded flex-shrink-0" style="display:none; width: 60px; height: 40px; background:#f8f9fa;">
+                                    <img id="previewImg3" src="" class="w-100 h-100 rounded" style="object-fit: cover;">
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle shadow" style="width: 20px; height: 20px; padding: 0;" onclick="removeImage(3)">
+                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="col-md-6">
-                            <label class="form-label small text-muted">Ek Görsel 4</label>
-                            <input type="file" id="fileImg4" class="form-control" accept="image/*">
+                            <label class="form-label small fw-bold text-muted">Ek Görsel 4</label>
+                            <div class="d-flex align-items-start gap-2">
+                                <input type="file" id="fileImg4" class="form-control bg-light border-0 flex-grow-1" accept="image/*">
+                                <div id="previewContainer4" class="position-relative shadow-sm rounded flex-shrink-0" style="display:none; width: 60px; height: 40px; background:#f8f9fa;">
+                                    <img id="previewImg4" src="" class="w-100 h-100 rounded" style="object-fit: cover;">
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle shadow" style="width: 20px; height: 20px; padding: 0;" onclick="removeImage(4)">
+                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="col-md-6">
-                            <label class="form-label small text-muted">Ek Görsel 5</label>
-                            <input type="file" id="fileImg5" class="form-control" accept="image/*">
+                            <label class="form-label small fw-bold text-muted">Ek Görsel 5</label>
+                            <div class="d-flex align-items-start gap-2">
+                                <input type="file" id="fileImg5" class="form-control bg-light border-0 flex-grow-1" accept="image/*">
+                                <div id="previewContainer5" class="position-relative shadow-sm rounded flex-shrink-0" style="display:none; width: 60px; height: 40px; background:#f8f9fa;">
+                                    <img id="previewImg5" src="" class="w-100 h-100 rounded" style="object-fit: cover;">
+                                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle shadow" style="width: 20px; height: 20px; padding: 0;" onclick="removeImage(5)">
+                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -96,13 +143,38 @@
             if (!token) { window.location.href = "/Auth/Login"; return; }
 
             let myEditor;
-            let existingNews = null; // Düzenleme modundaysak eski verileri burada tutacağız
+            let existingNews = null;
 
-            // URL'den ID'yi yakala (Düzenleme modu mu?)
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('id');
 
-            // 1. CKEditor'ü Başlat
+            // --- 1. GÖRSEL ÖNİZLEME VE SİLME FONKSİYONLARI ---
+
+            // Dosya seçildiğinde anında önizleme göster
+            function setupImagePreview(index) {
+                $(`#fileImg${index}`).change(function () {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            $(`#previewImg${index}`).attr("src", e.target.result);
+                            $(`#previewContainer${index}`).fadeIn('fast');
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            for (let i = 1; i <= 5; i++) setupImagePreview(i);
+
+            // Çarpıya basılınca görseli temizle
+            window.removeImage = function(index) {
+                $(`#fileImg${index}`).val(""); // Seçili dosyayı inputtan sil
+                $(`#previewImg${index}`).attr("src", ""); // Önizlemeyi boşalt
+                $(`#previewContainer${index}`).fadeOut('fast'); // Kutuyu gizle
+            }
+
+            // --- 2. CKEDITOR VE VERİ ÇEKME ---
             ClassicEditor
                 .create(document.querySelector('#txtContent'), {
                     toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', '|', 'undo', 'redo' ]
@@ -110,10 +182,9 @@
                 .then(editor => {
                     myEditor = editor;
 
-                    // EĞER DÜZENLEME MODUYSA VERİLERİ ÇEK
                     if (editId) {
-                        $("h2").html('<i class="fas fa-edit text-warning me-2"></i>Haberi Düzenle'); // Sayfa başlığını değiştir
-                        $("#btnPublish").html('<i class="fas fa-save me-2"></i>Değişiklikleri Kaydet'); // Butonu değiştir
+                        $("#pageHeaderTitle").html('<i class="fas fa-edit text-warning me-2"></i>Haberi Düzenle');
+                        $("#btnPublish").html('<i class="fas fa-save me-2"></i>Değişiklikleri Kaydet').removeClass("btn-success").addClass("btn-primary");
 
                         $.ajax({
                             url: "https://localhost:7112/api/News/" + editId,
@@ -123,16 +194,24 @@
 
                                 $("#txtTitle").val(existingNews.title);
                                 myEditor.setData(existingNews.content);
-
-                                // Kategoriler yüklenince doğru olanı seçmek için ufak bir bekleme (Aşağıdaki kategori kodundan sonra çalışır)
                                 setTimeout(() => { $("#ddlCategory").val(existingNews.categoryId); }, 500);
+
+                                // Mevcut görselleri önizleme alanlarına doldur
+                                const imgPaths = [existingNews.imagePath, existingNews.imagePath2, existingNews.imagePath3, existingNews.imagePath4, existingNews.imagePath5];
+
+                                imgPaths.forEach((path, i) => {
+                                    let index = i + 1;
+                                    if (path) {
+                                        $(`#previewImg${index}`).attr("src", path);
+                                        $(`#previewContainer${index}`).show();
+                                    }
+                                });
                             }
                         });
                     }
-                })
-                .catch(error => { console.error(error); });
+                }).catch(error => console.error(error));
 
-            // 2. Kategorileri Doldur
+            // --- 3. KATEGORİLERİ DOLDUR ---
             $.ajax({
                 url: "https://localhost:7112/api/Category", type: "GET",
                 success: function (res) {
@@ -143,7 +222,7 @@
                 }
             });
 
-            // 3. Haberi Yayımla veya Güncelle
+            // --- 4. YAYIMLA VEYA GÜNCELLE İŞLEMİ ---
             $("#btnPublish").click(async function () {
                 let title = $("#txtTitle").val();
                 let catId = parseInt($("#ddlCategory").val());
@@ -153,40 +232,47 @@
                     Swal.fire("Uyarı", "Başlık, Kategori ve İçerik zorunludur.", "warning"); return;
                 }
 
-                // Yeni ekleme yapılıyorsa kapak fotoğrafı zorunlu, düzenlemede değil (Eskisi kalır)
-                if (!editId && !document.getElementById("fileImg1").files[0]) {
-                    Swal.fire("Uyarı", "Lütfen bir kapak fotoğrafı seçin.", "warning"); return;
+                let btn = $(this);
+                btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> İşleniyor...');
+
+                // Akıllı Yükleme Fonksiyonu: Yeni dosya varsa yükler, yoksa önizlemedeki eski linki korur, çarpıya basıldıysa null döndürür.
+                async function resolveImageUrl(inputId, index) {
+                    let file = document.getElementById(inputId).files[0];
+                    if (file) {
+                        let fd = new FormData(); fd.append("file", file);
+                        try {
+                            let r = await $.ajax({ url: "https://localhost:7112/api/News/Upload", type: "POST", headers: { "Authorization": "Bearer " + token }, data: fd, processData: false, contentType: false });
+                            return r.url;
+                        } catch (e) { return null; }
+                    }
+
+                    // Dosya seçilmemişse önizleme kutusuna bak. Doluysa eski resmi koru.
+                    let previewSrc = $(`#previewImg${index}`).attr("src");
+                    if (previewSrc && !previewSrc.startsWith("data:")) return previewSrc;
+
+                    return null; // Silinmiş veya hiç yüklenmemiş
                 }
 
-                let btn = $(this); btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> İşleniyor...');
-
-                // Fotoğraf yükleme fonksiyonu
-                async function uploadFile(id) {
-                    let f = document.getElementById(id).files[0]; if (!f) return null;
-                    let fd = new FormData(); fd.append("file", f);
-                    try {
-                        let r = await $.ajax({ url: "https://localhost:7112/api/News/Upload", type: "POST", headers: { "Authorization": "Bearer " + token }, data: fd, processData: false, contentType: false });
-                        return r.url;
-                    } catch (e) { return null; }
-                }
-
-                // Gönderilecek Veri Paketi
                 let p = {
                     title: title,
                     content: content,
                     categoryId: catId,
-                    // Eğer yeni dosya seçildiyse onu yükle, seçilmediyse ve düzenleme modundaysak eski resmi koru!
-                    imagePath: await uploadFile("fileImg1") || (existingNews ? existingNews.imagePath : null),
-                    imagePath2: await uploadFile("fileImg2") || (existingNews ? existingNews.imagePath2 : null),
-                    imagePath3: await uploadFile("fileImg3") || (existingNews ? existingNews.imagePath3 : null),
-                    imagePath4: await uploadFile("fileImg4") || (existingNews ? existingNews.imagePath4 : null),
-                    imagePath5: await uploadFile("fileImg5") || (existingNews ? existingNews.imagePath5 : null)
+                    imagePath: await resolveImageUrl("fileImg1", 1),
+                    imagePath2: await resolveImageUrl("fileImg2", 2),
+                    imagePath3: await resolveImageUrl("fileImg3", 3),
+                    imagePath4: await resolveImageUrl("fileImg4", 4),
+                    imagePath5: await resolveImageUrl("fileImg5", 5)
                 };
 
-                // ID varsa API'ye ID'yi de gönder (Güncelleme için)
+                // Kapak görseli kontrolü
+                if (!p.imagePath) {
+                    Swal.fire("Uyarı", "Kapak Fotoğrafı zorunludur! Mevcut olanı sildiyseniz yenisini yüklemelisiniz.", "warning");
+                    btn.prop("disabled", false).html(editId ? '<i class="fas fa-save me-2"></i>Değişiklikleri Kaydet' : '<i class="fas fa-paper-plane me-2"></i>Haberi Yayımla');
+                    return;
+                }
+
                 if (editId) p.id = parseInt(editId);
 
-                // İstek Türü ve URL'i Belirle
                 let requestType = editId ? "PUT" : "POST";
                 let apiUrl = editId ? "https://localhost:7112/api/News/" + editId : "https://localhost:7112/api/News";
 
@@ -197,10 +283,10 @@
                     headers: { "Authorization": "Bearer " + token },
                     data: JSON.stringify(p),
                     success: function () {
-                        Swal.fire("Başarılı!", editId ? "Haber güncellendi." : "Yayımlandı.", "success").then(() => window.location.href = "/Home/Profile");
+                        Swal.fire("Başarılı!", editId ? "Haber başarıyla güncellendi." : "Haber yayımlandı.", "success").then(() => window.location.href = "/Home/Profile");
                     },
                     error: function () {
-                        btn.prop("disabled", false).html(editId ? 'Değişiklikleri Kaydet' : 'Haberi Yayımla');
+                        btn.prop("disabled", false).html(editId ? '<i class="fas fa-save me-2"></i>Değişiklikleri Kaydet' : '<i class="fas fa-paper-plane me-2"></i>Haberi Yayımla');
                         Swal.fire("Hata", "İşlem gerçekleştirilemedi.", "error");
                     }
                 });
