@@ -84,7 +84,6 @@
     <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 
     <style>
-        /* Editörün yüksekliğini ayarlıyoruz ki ferah ferah yazılsın */
         .ck-editor__editable_inline {
             min-height: 300px;
             font-size: 1.1rem;
@@ -94,22 +93,48 @@
     <script>
         $(document).ready(function () {
             const token = localStorage.getItem("token");
-            let myEditor; // Editör nesnesini burada tutacağız
+            if (!token) { window.location.href = "/Auth/Login"; return; }
 
-            // 1. Textarea'yı Zengin Editöre Dönüştür
+            let myEditor;
+            let existingNews = null; // Düzenleme modundaysak eski verileri burada tutacağız
+
+            // URL'den ID'yi yakala (Düzenleme modu mu?)
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('id');
+
+            // 1. CKEditor'ü Başlat
             ClassicEditor
                 .create(document.querySelector('#txtContent'), {
                     toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', '|', 'undo', 'redo' ]
                 })
                 .then(editor => {
                     myEditor = editor;
-                    console.log("Editör başarıyla yüklendi.");
-                })
-                .catch(error => { console.error("Editör yüklenirken hata:", error); });
 
-            // Kategori Çekme İşlemi
+                    // EĞER DÜZENLEME MODUYSA VERİLERİ ÇEK
+                    if (editId) {
+                        $("h2").html('<i class="fas fa-edit text-warning me-2"></i>Haberi Düzenle'); // Sayfa başlığını değiştir
+                        $("#btnPublish").html('<i class="fas fa-save me-2"></i>Değişiklikleri Kaydet'); // Butonu değiştir
+
+                        $.ajax({
+                            url: "https://localhost:7112/api/News/" + editId,
+                            type: "GET",
+                            success: function(res) {
+                                existingNews = res.data ? res.data : (res.$values ? res.$values : res);
+
+                                $("#txtTitle").val(existingNews.title);
+                                myEditor.setData(existingNews.content);
+
+                                // Kategoriler yüklenince doğru olanı seçmek için ufak bir bekleme (Aşağıdaki kategori kodundan sonra çalışır)
+                                setTimeout(() => { $("#ddlCategory").val(existingNews.categoryId); }, 500);
+                            }
+                        });
+                    }
+                })
+                .catch(error => { console.error(error); });
+
+            // 2. Kategorileri Doldur
             $.ajax({
-                url: "https://localhost:7112/api/Category", type: "GET", headers: { "Authorization": "Bearer " + token },
+                url: "https://localhost:7112/api/Category", type: "GET",
                 success: function (res) {
                     let catList = res.data ? res.data : (res.$values ? res.$values : res);
                     let opts = '<option value="">Kategori Seçiniz...</option>';
@@ -118,20 +143,24 @@
                 }
             });
 
-            // Haberi Yayımla İşlemi
+            // 3. Haberi Yayımla veya Güncelle
             $("#btnPublish").click(async function () {
                 let title = $("#txtTitle").val();
                 let catId = parseInt($("#ddlCategory").val());
-
-                // İÇERİĞİ ARTIK TEXTAREA'DAN DEĞİL, EDİTÖRDEN ALIYORUZ!
                 let content = myEditor.getData();
 
-                if (!title || !content || isNaN(catId) || !document.getElementById("fileImg1").files[0]) {
-                    Swal.fire("Uyarı", "Başlık, Kategori, İçerik ve Kapak Fotoğrafı zorunludur.", "warning"); return;
+                if (!title || !content || isNaN(catId)) {
+                    Swal.fire("Uyarı", "Başlık, Kategori ve İçerik zorunludur.", "warning"); return;
                 }
 
-                let btn = $(this); btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> Yükleniyor...');
+                // Yeni ekleme yapılıyorsa kapak fotoğrafı zorunlu, düzenlemede değil (Eskisi kalır)
+                if (!editId && !document.getElementById("fileImg1").files[0]) {
+                    Swal.fire("Uyarı", "Lütfen bir kapak fotoğrafı seçin.", "warning"); return;
+                }
 
+                let btn = $(this); btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin"></i> İşleniyor...');
+
+                // Fotoğraf yükleme fonksiyonu
                 async function uploadFile(id) {
                     let f = document.getElementById(id).files[0]; if (!f) return null;
                     let fd = new FormData(); fd.append("file", f);
@@ -141,16 +170,39 @@
                     } catch (e) { return null; }
                 }
 
+                // Gönderilecek Veri Paketi
                 let p = {
-                    title: title, content: content, categoryId: catId,
-                    imagePath: await uploadFile("fileImg1"), imagePath2: await uploadFile("fileImg2"),
-                    imagePath3: await uploadFile("fileImg3"), imagePath4: await uploadFile("fileImg4"), imagePath5: await uploadFile("fileImg5")
+                    title: title,
+                    content: content,
+                    categoryId: catId,
+                    // Eğer yeni dosya seçildiyse onu yükle, seçilmediyse ve düzenleme modundaysak eski resmi koru!
+                    imagePath: await uploadFile("fileImg1") || (existingNews ? existingNews.imagePath : null),
+                    imagePath2: await uploadFile("fileImg2") || (existingNews ? existingNews.imagePath2 : null),
+                    imagePath3: await uploadFile("fileImg3") || (existingNews ? existingNews.imagePath3 : null),
+                    imagePath4: await uploadFile("fileImg4") || (existingNews ? existingNews.imagePath4 : null),
+                    imagePath5: await uploadFile("fileImg5") || (existingNews ? existingNews.imagePath5 : null)
                 };
 
+                // ID varsa API'ye ID'yi de gönder (Güncelleme için)
+                if (editId) p.id = parseInt(editId);
+
+                // İstek Türü ve URL'i Belirle
+                let requestType = editId ? "PUT" : "POST";
+                let apiUrl = editId ? "https://localhost:7112/api/News/" + editId : "https://localhost:7112/api/News";
+
                 $.ajax({
-                    url: "https://localhost:7112/api/News", type: "POST", contentType: "application/json", headers: { "Authorization": "Bearer " + token }, data: JSON.stringify(p),
-                    success: function () { Swal.fire("Başarılı!", "Yayımlandı.", "success").then(() => window.location.href = "/Home/Index"); },
-                    error: function () { btn.prop("disabled", false).html('Haberi Yayımla'); Swal.fire("Hata", "Oluşturulamadı.", "error"); }
+                    url: apiUrl,
+                    type: requestType,
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify(p),
+                    success: function () {
+                        Swal.fire("Başarılı!", editId ? "Haber güncellendi." : "Yayımlandı.", "success").then(() => window.location.href = "/Home/Profile");
+                    },
+                    error: function () {
+                        btn.prop("disabled", false).html(editId ? 'Değişiklikleri Kaydet' : 'Haberi Yayımla');
+                        Swal.fire("Hata", "İşlem gerçekleştirilemedi.", "error");
+                    }
                 });
             });
         });

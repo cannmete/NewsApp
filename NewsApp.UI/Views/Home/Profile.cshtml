@@ -145,32 +145,17 @@
                 return;
             }
 
-            // --- TOKEN ÇÖZÜCÜ (ROL TESPİTİ İÇİN) ---
+            // ==========================================
+            // 1. ÖNCE FONKSİYONLARI TANIMLIYORUZ
+            // ==========================================
+
+            // --- TOKEN ÇÖZÜCÜ ---
             function parseJwt(t) {
                 try { return JSON.parse(atob(t.split('.')[1])); }
                 catch (e) { return null; }
             }
 
-            const decodedToken = parseJwt(token);
-            let role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
-            if (Array.isArray(role)) role = role[0];
-
-            let displayRole = role === "Admin" ? "Yönetici" : (role === "Writer" ? "İçerik Yazarı" : "Okur");
-            $("#profileRole").html(`<i class="fas fa-id-badge me-2"></i>${displayRole}`);
-
-            // Sekmeleri Rol'e Göre Ayarla
-            if (role === "Writer" || role === "Admin") {
-                $("#tabWriter").show();
-                $("#pills-comments-tab").removeClass("active");
-                $("#pills-comments").removeClass("show active");
-                $("#pills-news-tab").addClass("active");
-                $("#pills-news").addClass("show active");
-                LoadMyNews();
-            }
-
-            LoadMyComments();
-
-            // --- PROFİL BİLGİLERİNİ GETİR (/api/User/Me) ---
+            // --- PROFİL BİLGİLERİNİ GETİR ---
             function loadProfile() {
                 $.ajax({
                     url: "https://localhost:7112/api/User/Me",
@@ -186,75 +171,9 @@
                     }
                 });
             }
-            loadProfile();
-
-            // --- MODALI AÇ VE VERİLERİ DOLDUR ---
-            window.openEditModal = function() {
-                $("#editFullName").val($("#displayFullName").text());
-                $("#editUserName").val($("#displayUserName").text());
-                $("#editEmail").val($("#displayEmail").text());
-                $("#editAvatarPreview").attr("src", $("#displayAvatar").attr("src"));
-                localStorage.removeItem("tempProfilePhotoPath");
-                $("#editProfileModal").modal("show");
-            };
-
-            // --- FOTOĞRAF SEÇ VE YÜKLE ---
-            $("#profileUpload").change(function() {
-                const file = this.files[0];
-                if (file) {
-                    if(!file.type.startsWith('image/')){
-                        Swal.fire("Hata", "Lütfen sadece resim dosyası seçin.", "error"); return;
-                    }
-                    const formData = new FormData();
-                    formData.append("file", file);
-
-                    $.ajax({
-                        url: "https://localhost:7112/api/News/Upload",
-                        type: "POST",
-                        headers: { "Authorization": "Bearer " + token },
-                        data: formData,
-                        processData: false, contentType: false,
-                        success: function(res) {
-                            $("#editAvatarPreview").attr("src", res.url);
-                            localStorage.setItem("tempProfilePhotoPath", res.url);
-                        },
-                        error: function() { Swal.fire("Hata", "Fotoğraf yüklenemedi.", "error"); }
-                    });
-                }
-            });
-
-            // --- BİLGİLERİ GÜNCELLE (SAVE) ---
-            $("#btnUpdateProfile").click(function() {
-                const payload = {
-                    FullName: $("#editFullName").val(),
-                    UserName: $("#editUserName").val(),
-                    Email: $("#editEmail").val(),
-                    ProfilePhotoPath: localStorage.getItem("tempProfilePhotoPath") || ($("#displayAvatar").attr("src").includes("ui-avatars") ? null : $("#displayAvatar").attr("src"))
-                };
-
-                $.ajax({
-                    url: "https://localhost:7112/api/User/UpdateProfile",
-                    type: "PUT",
-                    contentType: "application/json",
-                    headers: { "Authorization": "Bearer " + token },
-                    data: JSON.stringify(payload),
-                    success: function() {
-                        Swal.fire("Başarılı!", "Profiliniz güncellendi. Yeniden giriş yapmalısınız.", "success").then(() => {
-                            localStorage.removeItem("token");
-                            localStorage.removeItem("tempProfilePhotoPath");
-                            window.location.href = "/Auth/Login";
-                        });
-                    },
-                    error: function(err) {
-                        let errorMsg = "Güncelleme başarısız.";
-                        if (err.responseJSON && err.responseJSON[0]) errorMsg = err.responseJSON[0].description;
-                        Swal.fire("Hata", errorMsg, "error");
-                    }
-                });
-            });
 
             // --- HABERLERİMİ GETİR ---
-            function LoadMyNews() {
+            window.LoadMyNews = function() {
                 $.ajax({
                     url: "https://localhost:7112/api/News/MyNews",
                     type: "GET",
@@ -269,14 +188,22 @@
                             html += `
                             <div class="col-md-6 mb-4">
                                 <div class="card shadow-sm border-0 rounded-4 h-100">
-                                    <div class="card-body">
+                                    <div class="card-body d-flex flex-column">
                                         <div class="d-flex justify-content-between mb-2">
                                             <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">${n.categoryName || "Genel"}</span>
                                             <small class="text-muted"><i class="far fa-eye me-1"></i>${n.viewCount}</small>
                                         </div>
-                                        <h5 class="fw-bold">
+                                        <h5 class="fw-bold mb-3">
                                             <a href="/Home/NewsDetail/${n.id}" class="text-dark text-decoration-none">${n.title}</a>
                                         </h5>
+                                        <div class="mt-auto border-top pt-3 d-flex justify-content-between">
+                                            <a href="/Home/WriteNews?id=${n.id}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                                                <i class="fas fa-edit me-1"></i>Düzenle
+                                            </a>
+                                            <button onclick="deleteMyNews(${n.id})" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+                                                <i class="fas fa-trash me-1"></i>Sil
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>`;
@@ -287,7 +214,7 @@
             }
 
             // --- YORUMLARIMI GETİR ---
-            function LoadMyComments() {
+            window.LoadMyComments = function() {
                 $.ajax({
                     url: "https://localhost:7112/api/Comment/MyComments",
                     type: "GET",
@@ -317,6 +244,126 @@
                     }
                 });
             }
+
+            // --- HABER SİLME İŞLEMİ ---
+            window.deleteMyNews = function(id) {
+                Swal.fire({
+                    title: "Emin misiniz?",
+                    text: "Bu haber kalıcı olarak silinecektir!",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Evet, Sil!",
+                    cancelButtonText: "İptal"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "https://localhost:7112/api/News/" + id,
+                            type: "DELETE",
+                            headers: { "Authorization": "Bearer " + token },
+                            success: function () {
+                                Swal.fire("Silindi!", "Haberiniz yayından kaldırıldı.", "success");
+                                LoadMyNews();
+                            },
+                            error: function () {
+                                Swal.fire("Hata", "Haber silinirken bir sorun oluştu.", "error");
+                            }
+                        });
+                    }
+                });
+            };
+
+            // --- MODALI AÇ VE VERİLERİ DOLDUR ---
+            window.openEditModal = function() {
+                $("#editFullName").val($("#displayFullName").text());
+                $("#editUserName").val($("#displayUserName").text());
+                $("#editEmail").val($("#displayEmail").text());
+                $("#editAvatarPreview").attr("src", $("#displayAvatar").attr("src"));
+                localStorage.removeItem("tempProfilePhotoPath");
+                $("#editProfileModal").modal("show");
+            };
+
+            // ==========================================
+            // 2. SONRA MANTIKLARI ÇALIŞTIRIYORUZ
+            // ==========================================
+
+            const decodedToken = parseJwt(token);
+            let role = decodedToken["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "User";
+            if (Array.isArray(role)) role = role[0];
+
+            let displayRole = role === "Admin" ? "Yönetici" : (role === "Writer" ? "İçerik Yazarı" : "Okur");
+            $("#profileRole").html(`<i class="fas fa-id-badge me-2"></i>${displayRole}`);
+
+            // API'den verileri çekmeye başla
+            loadProfile();
+            LoadMyComments();
+
+            // Sadece Writer veya Admin ise haberleri çek
+            if (role === "Writer" || role === "Admin") {
+                $("#tabWriter").show();
+                $("#pills-comments-tab").removeClass("active");
+                $("#pills-comments").removeClass("show active");
+                $("#pills-news-tab").addClass("active");
+                $("#pills-news").addClass("show active");
+
+                LoadMyNews(); // Artık hata vermeyecek çünkü yukarıda tanımladık!
+            }
+
+            // ==========================================
+            // 3. BUTON VE DOSYA DİNLEYİCİLERİ
+            // ==========================================
+
+            $("#profileUpload").change(function() {
+                const file = this.files[0];
+                if (file) {
+                    if(!file.type.startsWith('image/')){
+                        Swal.fire("Hata", "Lütfen sadece resim dosyası seçin.", "error"); return;
+                    }
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    $.ajax({
+                        url: "https://localhost:7112/api/News/Upload",
+                        type: "POST",
+                        headers: { "Authorization": "Bearer " + token },
+                        data: formData,
+                        processData: false, contentType: false,
+                        success: function(res) {
+                            $("#editAvatarPreview").attr("src", res.url);
+                            localStorage.setItem("tempProfilePhotoPath", res.url);
+                        },
+                        error: function() { Swal.fire("Hata", "Fotoğraf yüklenemedi.", "error"); }
+                    });
+                }
+            });
+
+            $("#btnUpdateProfile").click(function() {
+                const payload = {
+                    FullName: $("#editFullName").val(),
+                    UserName: $("#editUserName").val(),
+                    Email: $("#editEmail").val(),
+                    ProfilePhotoPath: localStorage.getItem("tempProfilePhotoPath") || ($("#displayAvatar").attr("src").includes("ui-avatars") ? null : $("#displayAvatar").attr("src"))
+                };
+
+                $.ajax({
+                    url: "https://localhost:7112/api/User/UpdateProfile",
+                    type: "PUT",
+                    contentType: "application/json",
+                    headers: { "Authorization": "Bearer " + token },
+                    data: JSON.stringify(payload),
+                    success: function() {
+                        Swal.fire("Başarılı!", "Profiliniz güncellendi. Yeniden giriş yapmalısınız.", "success").then(() => {
+                            localStorage.removeItem("token");
+                            localStorage.removeItem("tempProfilePhotoPath");
+                            window.location.href = "/Auth/Login";
+                        });
+                    },
+                    error: function(err) {
+                        let errorMsg = "Güncelleme başarısız.";
+                        if (err.responseJSON && err.responseJSON[0]) errorMsg = err.responseJSON[0].description;
+                        Swal.fire("Hata", errorMsg, "error");
+                    }
+                });
+            });
 
         });
     </script>
